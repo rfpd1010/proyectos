@@ -657,6 +657,20 @@ async function comprobarCuenta() {
   await mostrarAplicacion();
 }
 
+async function mostrarAplicacion() {
+  $("layout").classList.remove("oculto");
+  $("tituloNegocio").textContent = negocioActual.nombre;
+
+  if (negocioActual.tipo !== "almacen") {
+    $("navFiado").classList.add("oculto");
+  } else {
+    $("navFiado").classList.remove("oculto");
+  }
+
+  await cargarPrueba();
+  await cargarResumen();
+}
+
 
 /* SUSCRIPCIÓN / PRUEBA */
 async function cargarPrueba() {
