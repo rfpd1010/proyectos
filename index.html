@@ -620,8 +620,7 @@ async function comprobarCuenta() {
   negocioActual = data;
   await mostrarAplicacion();
 }
- 
-async function crearNegocio() {
+   async function crearNegocio() {
   const nombre = $("nombreNegocio").value.trim();
   const tipo = $("tipoNegocio").value;
 
@@ -657,6 +656,7 @@ async function crearNegocio() {
   $("configuracion").classList.add("oculto");
   await mostrarAplicacion();
 }
+
 
 /* SUSCRIPCIÓN / PRUEBA */
 async function cargarPrueba() {
