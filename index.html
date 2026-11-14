@@ -1,10 +1,12 @@
-
+   ```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi calculadora de ganancias</title>
+    <title>Calculadora de ganancias</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         body {
@@ -12,7 +14,7 @@
             background: #eeeeee;
             display: flex;
             justify-content: center;
-            padding: 30px;
+            padding: 30px 15px;
         }
 
         .calculadora {
@@ -20,10 +22,11 @@
             padding: 25px;
             border-radius: 12px;
             width: 100%;
-            max-width: 380px;
+            max-width: 400px;
+            box-sizing: border-box;
         }
 
-        h1 {
+        h1, h2 {
             text-align: center;
         }
 
@@ -43,9 +46,28 @@
             cursor: pointer;
         }
 
-        #resultado {
+        button.secundario {
+            background: #555;
+        }
+
+        #resultado, #historial {
             margin-top: 20px;
             line-height: 1.7;
+            overflow-wrap: anywhere;
+        }
+
+        .registro {
+            border-top: 1px solid #ddd;
+            padding: 10px 0;
+        }
+
+        .oculto {
+            display: none;
+        }
+
+        .mensaje {
+            text-align: center;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -56,66 +78,284 @@
 
     <h1>Calculadora de ganancias</h1>
 
-    <label>¿Cuánto ganaste hoy?</label>
-    <input type="number" id="ganancia" step="any" required>
+    <!-- ACCESO -->
+    <section id="acceso">
 
-    <label>¿Cuánto gastaste en publicidad?</label>
-    <input type="number" id="perdida" step="any" required>
+        <h2>Iniciar sesión</h2>
 
-    <label>¿Cuánto ganaste ayer?</label>
-    <input type="number" id="anterior" step="any" required>
+        <label>Correo electrónico</label>
+        <input type="email" id="correo" placeholder="Tu correo">
 
-    <button onclick="calcular()">Calcular ganancias</button>
+        <label>Contraseña</label>
+        <input type="password" id="contrasena" placeholder="Tu contraseña">
 
-    <div id="resultado"></div>
+        <button onclick="iniciarSesion()">Iniciar sesión</button>
+
+        <button class="secundario" onclick="registrarse()">
+            Crear cuenta
+        </button>
+
+        <p id="mensajeAcceso" class="mensaje"></p>
+
+    </section>
+
+    <!-- CALCULADORA -->
+    <section id="aplicacion" class="oculto">
+
+        <p id="usuario"></p>
+
+        <button class="secundario" onclick="cerrarSesion()">
+            Cerrar sesión
+        </button>
+
+        <hr>
+
+        <h2>Registrar ganancias</h2>
+
+        <label>¿Cuánto ganaste hoy?</label>
+        <input type="number" id="ganancia" min="0" step="any">
+
+        <label>¿Cuánto gastaste en publicidad?</label>
+        <input type="number" id="perdida" min="0" step="any">
+
+        <label>¿Cuánto ganaste ayer?</label>
+        <input type="number" id="anterior" min="0" step="any">
+
+        <button onclick="calcular()">Calcular y guardar</button>
+
+        <div id="resultado"></div>
+
+        <hr>
+
+        <h2>Mi historial</h2>
+
+        <div id="historial">Cargando historial...</div>
+
+    </section>
 
 </div>
 
 <script>
-function calcular() {
+    // REEMPLAZÁ ESTOS DOS VALORES POR LOS DE TU PROYECTO
 
-    let ganancia = Number(document.getElementById("ganancia").value);
-    let perdida = Number(document.getElementById("perdida").value);
-    let anterior = Number(document.getElementById("anterior").value);
+    const SUPABASE_URL = https://pznculgjwextsrgyxufg.supabase.co/rest/v1/;
+    const SUPABASE_KEY = sb_publishable_OBeSRP1Syio6IIjZXq8EXQ_Qu2wawYZ;
 
-    if (
-        document.getElementById("ganancia").value === "" ||
-        document.getElementById("perdida").value === "" ||
-        document.getElementById("anterior").value === ""
-    ) {
-        alert("Completá todos los campos");
-        return;
+    const db = supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
+
+    // MOSTRAR LA SECCIÓN CORRESPONDIENTE
+
+    function mostrarAplicacion(sesion) {
+        document.getElementById("acceso").classList.toggle("oculto", sesion);
+        document.getElementById("aplicacion").classList.toggle("oculto", !sesion);
     }
 
-    let ganancia_neta = ganancia - perdida;
-    let diferencia = ganancia_neta - anterior;
+    // REGISTRARSE
 
-    let resultado = "";
+    async function registrarse() {
+        const correo = document.getElementById("correo").value;
+        const contrasena = document.getElementById("contrasena").value;
+        const mensaje = document.getElementById("mensajeAcceso");
 
-    if (anterior !== 0) {
-        let porcentaje = (diferencia / anterior) * 100;
-        resultado += "Cambio: " + porcentaje.toFixed(2) + "%<br>";
-    } else {
-        resultado += "No se puede calcular el porcentaje porque ayer no hubo ganancias.<br>";
+        if (!correo || !contrasena) {
+            mensaje.textContent = "Completá el correo y la contraseña.";
+            return;
+        }
+
+        const { data, error } = await db.auth.signUp({
+            email: correo,
+            password: contrasena,
+            options: {
+                emailRedirectTo: "https://rfpd1010.github.io/proyectos/"
+            }
+        });
+
+        if (error) {
+            mensaje.textContent = error.message;
+            return;
+        }
+
+        mensaje.textContent = data.session
+            ? "Cuenta creada correctamente."
+            : "Cuenta creada. Revisá tu correo para confirmar el registro.";
     }
 
-    resultado += "Ganancia neta de hoy: $" + ganancia_neta + "<br>";
+    // INICIAR SESIÓN
 
-    if (ganancia_neta > anterior) {
-        resultado += "Tu ganancia fue mayor que ayer.<br>";
-    } else if (ganancia_neta < anterior) {
-        resultado += "Tu ganancia fue menor que ayer.<br>";
-    } else {
-        resultado += "Tu ganancia fue igual que ayer.<br>";
+    async function iniciarSesion() {
+        const correo = document.getElementById("correo").value;
+        const contrasena = document.getElementById("contrasena").value;
+        const mensaje = document.getElementById("mensajeAcceso");
+
+        const { error } = await db.auth.signInWithPassword({
+            email: correo,
+            password: contrasena
+        });
+
+        if (error) {
+            mensaje.textContent = error.message;
+        }
     }
 
-    let ganancia_total = ganancia_neta + anterior;
+    // CERRAR SESIÓN
 
-    resultado += "Ganancia total: $" + ganancia_total;
+    async function cerrarSesion() {
+        await db.auth.signOut();
+    }
 
-    document.getElementById("resultado").innerHTML = resultado;
-}
+    // CALCULADORA
+
+    async function calcular() {
+
+        const gananciaTexto = document.getElementById("ganancia").value;
+        const perdidaTexto = document.getElementById("perdida").value;
+        const anteriorTexto = document.getElementById("anterior").value;
+
+        if (
+            gananciaTexto === "" ||
+            perdidaTexto === "" ||
+            anteriorTexto === ""
+        ) {
+            alert("Completá todos los campos.");
+            return;
+        }
+
+        const ganancia = Number(gananciaTexto);
+        const perdida = Number(perdidaTexto);
+        const anterior = Number(anteriorTexto);
+
+        if (
+            !Number.isFinite(ganancia) ||
+            !Number.isFinite(perdida) ||
+            !Number.isFinite(anterior) ||
+            ganancia < 0 || perdida < 0 || anterior < 0
+        ) {
+            alert("Ingresá números válidos y no negativos.");
+            return;
+        }
+
+        const ganancia_neta = ganancia - perdida;
+        const diferencia = ganancia_neta - anterior;
+
+        let resultado = "";
+
+        if (anterior !== 0) {
+            const porcentaje = (diferencia / anterior) * 100;
+            resultado += "Cambio: " + porcentaje.toFixed(2) + "%<br>";
+        } else {
+            resultado += "No se puede calcular el porcentaje porque ayer no hubo ganancias.<br>";
+        }
+
+        resultado += "Ganancia neta de hoy: $" + ganancia_neta + "<br>";
+
+        if (ganancia_neta > anterior) {
+            resultado += "Tu ganancia fue mayor que ayer.<br>";
+        } else if (ganancia_neta < anterior) {
+            resultado += "Tu ganancia fue menor que ayer.<br>";
+        } else {
+            resultado += "Tu ganancia fue igual que ayer.<br>";
+        }
+
+        const ganancia_total = ganancia_neta + anterior;
+
+        resultado += "Ganancia total: $" + ganancia_total;
+
+        document.getElementById("resultado").innerHTML = resultado;
+
+        // GUARDAR EN SUPABASE
+
+        const { error } = await db
+            .from("ganancias")
+            .insert({
+                ganancia: ganancia,
+                publicidad: perdida,
+                ganancia_neta: ganancia_neta
+            });
+
+        if (error) {
+            alert("No se pudo guardar: " + error.message);
+            return;
+        }
+
+        alert("¡Ganancia guardada correctamente!");
+
+        cargarHistorial();
+    }
+
+    // HISTORIAL DE GANANCIAS
+
+    async function cargarHistorial() {
+
+        const contenedor = document.getElementById("historial");
+        contenedor.textContent = "Cargando historial...";
+
+        const { data, error } = await db
+            .from("ganancias")
+            .select("fecha, ganancia, publicidad, ganancia_neta")
+            .order("created_at", { ascending: false })
+            .limit(30);
+
+        if (error) {
+            contenedor.textContent = "Error al cargar el historial: " + error.message;
+            return;
+        }
+
+        contenedor.replaceChildren();
+
+        if (data.length === 0) {
+            contenedor.textContent = "Todavía no tenés ganancias registradas.";
+            return;
+        }
+
+        data.forEach(registro => {
+            const elemento = document.createElement("div");
+            elemento.className = "registro";
+
+            const fecha = document.createElement("strong");
+            fecha.textContent = registro.fecha;
+
+            const detalle = document.createElement("p");
+            detalle.textContent =
+                "Ganancia: $" + registro.ganancia +
+                " | Publicidad: $" + registro.publicidad +
+                " | Neto: $" + registro.ganancia_neta;
+
+            elemento.append(fecha, detalle);
+            contenedor.appendChild(elemento);
+        });
+    }
+
+    // COMPROBAR SI YA HAY UNA SESIÓN
+
+    db.auth.onAuthStateChange((evento, sesion) => {
+        mostrarAplicacion(!!sesion);
+
+        if (sesion) {
+            document.getElementById("usuario").textContent =
+                "Sesión iniciada: " + sesion.user.email;
+
+            cargarHistorial();
+        }
+    });
+
+    // COMPROBAR SESIÓN AL ABRIR LA PÁGINA
+
+    db.auth.getSession().then(({ data }) => {
+        mostrarAplicacion(!!data.session);
+
+        if (data.session) {
+            document.getElementById("usuario").textContent =
+                "Sesión iniciada: " + data.session.user.email;
+
+            cargarHistorial();
+        }
+    });
+
 </script>
 
 </body>
 </html>
+```
