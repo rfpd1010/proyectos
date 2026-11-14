@@ -622,6 +622,8 @@ async function comprobarCuenta() {
 }
 
 async function crearNegocio() {
+  
+async function crearNegocio() {
   const nombre = $("nombreNegocio").value.trim();
   const tipo = $("tipoNegocio").value;
 
@@ -630,9 +632,21 @@ async function crearNegocio() {
     return;
   }
 
+  const { data: { user }, error: errorUsuario } =
+    await db.auth.getUser();
+
+  if (errorUsuario || !user) {
+    mensaje("mensajeNegocio", "No se pudo verificar tu cuenta. Volvé a iniciar sesión.");
+    return;
+  }
+
   const { data, error } = await db
     .from("negocios")
-    .insert({ nombre, tipo })
+    .insert({
+      nombre,
+      tipo,
+      user_id: user.id
+    })
     .select()
     .single();
 
@@ -644,20 +658,6 @@ async function crearNegocio() {
   negocioActual = data;
   $("configuracion").classList.add("oculto");
   await mostrarAplicacion();
-}
-
-async function mostrarAplicacion() {
-  $("layout").classList.remove("oculto");
-  $("tituloNegocio").textContent = negocioActual.nombre;
-
-  if (negocioActual.tipo !== "almacen") {
-    $("navFiado").classList.add("oculto");
-  } else {
-    $("navFiado").classList.remove("oculto");
-  }
-
-  await cargarPrueba();
-  await cargarResumen();
 }
 
 /* SUSCRIPCIÓN / PRUEBA */
