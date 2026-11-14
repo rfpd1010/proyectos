@@ -2,540 +2,1133 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Control de ganancias</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi negocio</title>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <style>
-    * { box-sizing: border-box; }
+<style>
+:root {
+  --fondo:#f1f4f8;
+  --panel:#ffffff;
+  --texto:#202938;
+  --suave:#657080;
+  --borde:#dce2e9;
+  --primario:#1769e0;
+  --menu:#ffffff;
+  --seleccion:#e5efff;
+  --positivo:#168344;
+  --negativo:#c0392b;
+}
+body.oscuro {
+  --fondo:#111827;
+  --panel:#1f2937;
+  --texto:#f3f4f6;
+  --suave:#aab4c3;
+  --borde:#374151;
+  --primario:#438df5;
+  --menu:#1f2937;
+  --seleccion:#293f60;
+  --positivo:#4ade80;
+  --negativo:#fb7185;
+}
+* { box-sizing:border-box; }
+body {
+  margin:0;
+  background:var(--fondo);
+  color:var(--texto);
+  font-family:Arial,sans-serif;
+}
+button,input,select {
+  font:inherit;
+}
+button {
+  cursor:pointer;
+}
+.oculto { display:none !important; }
 
-    body {
-      font-family: Arial, sans-serif;
-      background: #f1f4f8;
-      margin: 0;
-      padding: 20px;
-      color: #202938;
-    }
-
-    .contenedor {
-      max-width: 650px;
-      margin: auto;
-    }
-
-    .panel {
-      background: white;
-      padding: 22px;
-      border-radius: 12px;
-      margin-bottom: 18px;
-      box-shadow: 0 2px 8px #00000012;
-    }
-
-    h1, h2 { margin-top: 0; }
-
-    input, select, button {
-      width: 100%;
-      padding: 12px;
-      margin: 7px 0;
-      border: 1px solid #ccd3dd;
-      border-radius: 7px;
-      font-size: 16px;
-    }
-
-    button {
-      background: #1769e0;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-
-    button:hover { background: #1054b9; }
-
-    .secundario { background: #596579; }
-    .peligro { background: #c0392b; }
-
-    .oculto { display: none; }
-
-    .dato {
-      background: #f1f4f8;
-      padding: 13px;
-      border-radius: 7px;
-      margin: 8px 0;
-    }
-
-    .operacion {
-      border-bottom: 1px solid #e1e5eb;
-      padding: 12px 0;
-    }
-
-    .positivo { color: #168344; }
-    .negativo { color: #c0392b; }
-
-    small { color: #657080; }
-  </style>
+.panel {
+  background:var(--panel);
+  border:1px solid var(--borde);
+  border-radius:12px;
+  padding:20px;
+  margin-bottom:18px;
+}
+input,select {
+  width:100%;
+  padding:12px;
+  border:1px solid var(--borde);
+  border-radius:7px;
+  background:var(--fondo);
+  color:var(--texto);
+  margin:7px 0 13px;
+}
+button.accion {
+  background:var(--primario);
+  color:white;
+  border:0;
+  padding:12px 16px;
+  border-radius:7px;
+  width:100%;
+  margin:6px 0;
+}
+button.secundario {
+  background:var(--fondo);
+  color:var(--texto);
+  border:1px solid var(--borde);
+  padding:10px 14px;
+  border-radius:7px;
+}
+button:disabled { opacity:.5; cursor:not-allowed; }
+label { font-size:14px; font-weight:bold; }
+small,.suave { color:var(--suave); }
+h1,h2,h3 { margin-top:0; }
+#acceso {
+  max-width:430px;
+  margin:60px auto;
+}
+#layout { min-height:100vh; }
+#menu {
+  position:fixed;
+  inset:0 auto 0 0;
+  width:235px;
+  padding:22px 15px;
+  background:var(--menu);
+  border-right:1px solid var(--borde);
+  z-index:10;
+  display:flex;
+  flex-direction:column;
+}
+#menu h2 { padding:0 10px; }
+.nav {
+  width:100%;
+  padding:13px;
+  margin:3px 0;
+  text-align:left;
+  color:var(--texto);
+  background:transparent;
+  border:0;
+  border-radius:8px;
+}
+.nav.activo { background:var(--seleccion); color:var(--primario); font-weight:bold; }
+#contenido {
+  margin-left:235px;
+  padding:25px;
+  max-width:1250px;
+}
+#barraMovil {
+  display:none;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:18px;
+}
+.resumen {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+.tarjeta {
+  padding:16px;
+  background:var(--fondo);
+  border:1px solid var(--borde);
+  border-radius:9px;
+}
+.numero { font-size:23px; font-weight:bold; margin-top:8px; }
+.positivo { color:var(--positivo); }
+.negativo { color:var(--negativo); }
+.fila {
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+.fila > * { flex:1; min-width:0; }
+.registro {
+  border-bottom:1px solid var(--borde);
+  padding:12px 0;
+}
+.cliente {
+  padding:14px;
+  border:1px solid var(--borde);
+  border-radius:9px;
+  margin:9px 0;
+}
+.calendario {
+  display:grid;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:5px;
+}
+.diaSemana,.dia {
+  text-align:center;
+  padding:8px 2px;
+  border-radius:7px;
+}
+.diaSemana { color:var(--suave); font-size:12px; }
+.dia {
+  background:var(--fondo);
+  border:1px solid var(--borde);
+  min-height:65px;
+  font-size:13px;
+}
+.dia.vacio { background:transparent; border:0; }
+.dia.ganancia { border-bottom:4px solid var(--positivo); }
+.dia.perdida { border-bottom:4px solid var(--negativo); }
+.dia.seleccionado { outline:2px solid var(--primario); }
+.dia strong { display:block; margin-bottom:5px; }
+#mensajeGlobal { margin:10px 0; color:var(--suave); }
+@media(max-width:750px) {
+  #menu {
+    transform:translateX(-100%);
+    transition:transform .2s;
+    box-shadow:0 0 20px #0002;
+  }
+  #menu.abierto { transform:translateX(0); }
+  #contenido { margin-left:0; padding:15px; }
+  #barraMovil { display:flex; }
+  .resumen { grid-template-columns:1fr; }
+}
+</style>
 </head>
 
 <body>
-<div class="contenedor">
 
-  <h1>Control de ganancias</h1>
+<!-- ACCESO -->
+<section id="acceso" class="panel">
+  <h1>Mi negocio</h1>
+  <p class="suave">Ingresá a tu cuenta o creá una nueva.</p>
 
-  <!-- ACCESO -->
-  <section id="acceso" class="panel">
-    <h2>Iniciar sesión</h2>
+  <label>Correo electrónico</label>
+  <input id="correo" type="email" placeholder="correo@ejemplo.com">
 
-    <input id="correo" type="email" placeholder="Correo electrónico">
-    <input id="contrasena" type="password" placeholder="Contraseña">
+  <label>Contraseña</label>
+  <input id="contrasena" type="password" placeholder="Contraseña">
 
-    <button onclick="iniciarSesion()">Iniciar sesión</button>
-    <button onclick="registrarse()" class="secundario">Crear cuenta</button>
+  <button class="accion" onclick="iniciarSesion()">Iniciar sesión</button>
+  <button class="secundario" style="width:100%" onclick="registrarse()">Crear cuenta</button>
+  <p id="mensajeAcceso"></p>
+</section>
 
-    <p id="mensajeAcceso"></p>
-  </section>
+<!-- CONFIGURACIÓN DEL NEGOCIO -->
+<section id="configuracion" class="panel oculto" style="max-width:500px;margin:50px auto">
+  <h1>Configurar negocio</h1>
+  <label>Nombre del negocio</label>
+  <input id="nombreNegocio" placeholder="Nombre">
 
-  <!-- CONFIGURAR NEGOCIO -->
-  <section id="configuracion" class="panel oculto">
-    <h2>Configurar negocio</h2>
+  <label>Tipo de negocio</label>
+  <select id="tipoNegocio">
+    <option value="almacen">Almacén</option>
+    <option value="digital">Digital</option>
+  </select>
 
-    <p>Antes de comenzar, configurá tu negocio.</p>
+  <button class="accion" onclick="crearNegocio()">Guardar negocio</button>
+  <p id="mensajeNegocio"></p>
+</section>
 
-    <input id="nombreNegocio" placeholder="Nombre del negocio">
+<!-- APLICACIÓN -->
+<div id="layout" class="oculto">
 
-    <select id="tipoNegocio">
-      <option value="almacen">Almacén</option>
-      <option value="digital">Negocio digital</option>
-    </select>
+  <aside id="menu">
+    <h2>Mi negocio</h2>
+    <button class="nav activo" data-seccion="inicio" onclick="irA('inicio',this)">⌂ Inicio</button>
+    <button class="nav" data-seccion="ventas" onclick="irA('ventas',this)">＋ Ventas</button>
+    <button class="nav" data-seccion="gastos" onclick="irA('gastos',this)">− Gastos</button>
+    <button class="nav" id="navFiado" data-seccion="fiado" onclick="irA('fiado',this)">▤ Fiado</button>
+    <button class="nav" data-seccion="graficos" onclick="irA('graficos',this)">▥ Gráficos</button>
 
-    <button onclick="crearNegocio()">Guardar negocio</button>
-    <p id="mensajeNegocio"></p>
-  </section>
+    <div style="flex:1"></div>
+    <button class="nav" onclick="cambiarTema()">☀️ / 🌙 Cambiar tema</button>
+    <button class="nav" onclick="cerrarSesion()">↪ Cerrar sesión</button>
+  </aside>
 
-  <!-- APLICACIÓN -->
-  <main id="aplicacion" class="oculto">
+  <main id="contenido">
 
-    <section class="panel">
-      <h2 id="tituloNegocio">Mi negocio</h2>
-      <p id="estadoPrueba"></p>
-      <button class="secundario" onclick="cerrarSesion()">Cerrar sesión</button>
+    <div id="barraMovil">
+      <button class="secundario" onclick="alternarMenu()">☰ Menú</button>
+      <button class="secundario" onclick="cambiarTema()">☀️ / 🌙</button>
+    </div>
+
+    <p id="mensajeGlobal"></p>
+
+    <!-- INICIO -->
+    <section id="seccion-inicio">
+      <h1 id="tituloNegocio">Mi negocio</h1>
+      <p id="estadoPrueba" class="suave"></p>
+
+      <div class="panel">
+        <h2>Resumen de hoy</h2>
+        <div class="resumen">
+          <div class="tarjeta">
+            <small>Ingresos registrados</small>
+            <div class="numero" id="totalVentas">$0</div>
+          </div>
+          <div class="tarjeta">
+            <small>Gastos</small>
+            <div class="numero" id="totalGastos">$0</div>
+          </div>
+          <div class="tarjeta">
+            <small>Resultado neto</small>
+            <div class="numero" id="gananciaNeta">$0</div>
+          </div>
+        </div>
+        <button class="secundario" onclick="cargarResumen()">Actualizar</button>
+      </div>
+
+      <div class="panel">
+        <h2>Movimientos de hoy</h2>
+        <div id="historialHoy">Cargando...</div>
+      </div>
     </section>
 
-    <!-- REGISTRAR OPERACIÓN -->
-    <section class="panel">
-      <h2>Registrar operación</h2>
+    <!-- VENTAS -->
+    <section id="seccion-ventas" class="oculto">
+      <h1>Ventas</h1>
+      <div class="panel">
+        <h2>Registrar venta</h2>
+        <label>Descripción</label>
+        <input id="descripcionVenta" placeholder="¿Qué vendiste?">
+        <label>Importe</label>
+        <input id="importeVenta" type="number" min="0.01" step="0.01" placeholder="Importe">
+        <label>Forma de pago</label>
+        <select id="formaVenta">
+          <option value="">No especificada</option>
+          <option value="efectivo">Efectivo</option>
+          <option value="transferencia">Transferencia</option>
+          <option value="mercado_pago">Mercado Pago</option>
+          <option value="tarjeta">Tarjeta</option>
+          <option value="otro">Otro</option>
+        </select>
+        <button class="accion" onclick="guardarVenta()">Guardar venta</button>
+        <p id="mensajeVenta"></p>
+      </div>
+    </section>
 
-      <label>Tipo de operación</label>
-      <select id="tipoOperacion" onchange="actualizarFormulario()">
-        <option value="venta">Venta</option>
-        <option value="gasto">Gasto</option>
-      </select>
-
-      <div id="categoriaGasto" class="oculto">
-        <label>Categoría del gasto</label>
-        <select id="categoria">
+    <!-- GASTOS -->
+    <section id="seccion-gastos" class="oculto">
+      <h1>Gastos</h1>
+      <div class="panel">
+        <h2>Registrar gasto</h2>
+        <label>Descripción</label>
+        <input id="descripcionGasto" placeholder="¿En qué gastaste?">
+        <label>Categoría</label>
+        <select id="categoriaGasto">
           <option value="productos">Productos</option>
           <option value="publicidad">Publicidad</option>
           <option value="otros">Otros</option>
         </select>
+        <label>Importe</label>
+        <input id="importeGasto" type="number" min="0.01" step="0.01" placeholder="Importe">
+        <label>Forma de pago</label>
+        <select id="formaGasto">
+          <option value="">No especificada</option>
+          <option value="efectivo">Efectivo</option>
+          <option value="transferencia">Transferencia</option>
+          <option value="mercado_pago">Mercado Pago</option>
+          <option value="tarjeta">Tarjeta</option>
+          <option value="otro">Otro</option>
+        </select>
+        <button class="accion" onclick="guardarGasto()">Guardar gasto</button>
+        <p id="mensajeGasto"></p>
       </div>
-
-      <input id="descripcion" placeholder="Descripción (opcional)">
-
-      <label>Importe</label>
-      <input id="importe" type="number" min="0.01" step="0.01" placeholder="Ejemplo: 1500">
-
-      <label>Forma de pago</label>
-      <select id="formaPago">
-        <option value="">No especificada</option>
-        <option value="efectivo">Efectivo</option>
-        <option value="transferencia">Transferencia</option>
-        <option value="tarjeta">Tarjeta</option>
-        <option value="otro">Otro</option>
-      </select>
-
-      <button onclick="guardarOperacion()">Guardar operación</button>
-      <p id="mensajeOperacion"></p>
     </section>
 
-    <!-- RESUMEN -->
-    <section class="panel">
-      <h2>Resumen de hoy</h2>
+    <!-- FIADO -->
+    <section id="seccion-fiado" class="oculto">
+      <h1>Fiado</h1>
 
-      <div class="dato">
-        Ventas: <strong id="totalVentas">$0</strong>
+      <div class="panel">
+        <h2>Registrar producto fiado</h2>
+        <label>Nombre del cliente (obligatorio)</label>
+        <input id="nombreCliente" placeholder="Nombre del cliente">
+        <label>Producto</label>
+        <input id="productoFiado" placeholder="Producto">
+        <label>Precio</label>
+        <input id="importeFiado" type="number" min="0.01" step="0.01" placeholder="Precio">
+        <button class="accion" onclick="guardarFiado()">Guardar fiado</button>
+        <p id="mensajeFiado"></p>
       </div>
 
-      <div class="dato">
-        Gastos en productos: <strong id="gastosProductos">$0</strong>
+      <div class="panel">
+        <h2>Buscar cliente</h2>
+        <input id="buscarCliente" placeholder="Escribí el nombre..." oninput="filtrarClientes()">
+        <div id="listaClientes">Cargando clientes...</div>
       </div>
 
-      <div class="dato">
-        Gastos en publicidad: <strong id="gastosPublicidad">$0</strong>
-      </div>
+      <div id="detalleCliente" class="panel oculto">
+        <h2 id="tituloCliente"></h2>
+        <div id="detalleDeuda"></div>
 
-      <div class="dato">
-        Otros gastos: <strong id="otrosGastos">$0</strong>
-      </div>
+        <h3>Registrar pago</h3>
+        <label>Importe que pagó</label>
+        <input id="importePago" type="number" min="0.01" step="0.01" placeholder="Importe">
+        <label>Descripción (opcional)</label>
+        <input id="descripcionPago" placeholder="Ej. Pago en efectivo">
+        <button class="accion" onclick="guardarPago()">Registrar pago</button>
+        <p id="mensajePago"></p>
 
-      <div class="dato">
-        Total de gastos: <strong id="totalGastos">$0</strong>
+        <h3>Historial de fiados y pagos</h3>
+        <div id="historialCliente"></div>
       </div>
-
-      <div class="dato">
-        Ganancia neta: <strong id="gananciaNeta">$0</strong>
-      </div>
-
-      <button class="secundario" onclick="cargarOperaciones()">Actualizar resumen</button>
     </section>
 
-    <!-- HISTORIAL DEL DÍA -->
-    <section class="panel">
-      <h2>Operaciones de hoy</h2>
-      <div id="historial"></div>
+    <!-- GRÁFICOS -->
+    <section id="seccion-graficos" class="oculto">
+      <h1>Gráficos</h1>
+      <div class="panel">
+        <h2>Resultado mensual</h2>
+        <div class="fila">
+          <div>
+            <label>Mes</label>
+            <select id="mesGrafico" onchange="cargarCalendario()"></select>
+          </div>
+          <div>
+            <label>Año</label>
+            <select id="anioGrafico" onchange="cargarCalendario()"></select>
+          </div>
+        </div>
+
+        <div class="resumen">
+          <div class="tarjeta">
+            <small>Días con ganancia</small>
+            <div class="numero positivo" id="sumaGanancias">$0</div>
+          </div>
+          <div class="tarjeta">
+            <small>Días con pérdida</small>
+            <div class="numero negativo" id="sumaPerdidas">$0</div>
+          </div>
+          <div class="tarjeta">
+            <small>Resultado del mes</small>
+            <div class="numero" id="resultadoMes">$0</div>
+          </div>
+        </div>
+
+        <p class="suave">Verde: ganancia neta. Rojo: pérdida neta. Los días sin movimientos aparecen vacíos.</p>
+
+        <div class="calendario" id="calendario"></div>
+        <div id="detalleDia" class="tarjeta" style="margin-top:15px">
+          Seleccioná un día para ver su resultado.
+        </div>
+      </div>
     </section>
 
   </main>
 </div>
 
 <script>
-  // CONFIGURACIÓN DE SUPABASE
-  const SUPABASE_URL = "https://pznculgjwextsrgyxufg.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_OBeSRP1Syio6IIjZXq8EXQ_Qu2wawYZ";
+/* CONFIGURACIÓN SUPABASE */
+const SUPABASE_URL = "https://pznculgjwextsrgyxufg.supabase.co";
+const SUPABASE_KEY = "sb_publishable_OBeSRP1Syio6IIjZXq8EXQ_Qu2wawYZ";
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  const db = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
+let negocioActual = null;
+let clienteSeleccionado = null;
+let clientesActuales = [];
+let operacionesMes = [];
+let diaSeleccionado = null;
+
+const $ = id => document.getElementById(id);
+
+function mensaje(id, texto) {
+  $(id).textContent = texto;
+}
+
+function dinero(valor) {
+  return "$" + Number(valor).toLocaleString("es-AR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function fechaHoy() {
+  const f = new Date();
+  return `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,"0")}-${String(f.getDate()).padStart(2,"0")}`;
+}
+
+function temaInicial() {
+  if (localStorage.getItem("temaNegocio") === "oscuro") {
+    document.body.classList.add("oscuro");
+  }
+}
+
+function cambiarTema() {
+  document.body.classList.toggle("oscuro");
+  localStorage.setItem(
+    "temaNegocio",
+    document.body.classList.contains("oscuro") ? "oscuro" : "claro"
+  );
+}
+
+function alternarMenu() {
+  $("menu").classList.toggle("abierto");
+}
+
+function irA(seccion, boton) {
+  document.querySelectorAll("main > section").forEach(s => s.classList.add("oculto"));
+  $("seccion-" + seccion).classList.remove("oculto");
+
+  document.querySelectorAll(".nav[data-seccion]").forEach(b => b.classList.remove("activo"));
+  if (boton) boton.classList.add("activo");
+
+  $("menu").classList.remove("abierto");
+
+  if (seccion === "fiado") cargarClientes();
+  if (seccion === "inicio") cargarResumen();
+  if (seccion === "graficos") prepararCalendario();
+}
+
+/* AUTENTICACIÓN */
+async function registrarse() {
+  const email = $("correo").value.trim();
+  const password = $("contrasena").value;
+
+  if (!email || password.length < 6) {
+    mensaje("mensajeAcceso", "Ingresá un correo y una contraseña de al menos 6 caracteres.");
+    return;
+  }
+
+  const { data, error } = await db.auth.signUp({ email, password });
+
+  if (error) {
+    mensaje("mensajeAcceso", error.message);
+    return;
+  }
+
+  if (data.session) {
+    await comprobarCuenta();
+  } else {
+    mensaje("mensajeAcceso", "Cuenta creada. Confirmá tu correo y después iniciá sesión.");
+  }
+}
+
+async function iniciarSesion() {
+  const email = $("correo").value.trim();
+  const password = $("contrasena").value;
+
+  const { error } = await db.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    mensaje("mensajeAcceso", error.message);
+    return;
+  }
+
+  await comprobarCuenta();
+}
+
+async function cerrarSesion() {
+  await db.auth.signOut();
+  location.reload();
+}
+
+async function comprobarCuenta() {
+  const { data: { user }, error: userError } = await db.auth.getUser();
+
+  if (userError || !user) {
+    mensaje("mensajeAcceso", "No se pudo comprobar la sesión.");
+    return;
+  }
+
+  $("acceso").classList.add("oculto");
+
+  const { data, error } = await db
+    .from("negocios")
+    .select("*")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (error) {
+    alert("Error al buscar el negocio: " + error.message);
+    return;
+  }
+
+  if (!data) {
+    $("configuracion").classList.remove("oculto");
+    return;
+  }
+
+  negocioActual = data;
+  await mostrarAplicacion();
+}
+
+async function crearNegocio() {
+  const nombre = $("nombreNegocio").value.trim();
+  const tipo = $("tipoNegocio").value;
+
+  if (!nombre) {
+    mensaje("mensajeNegocio", "Escribí el nombre del negocio.");
+    return;
+  }
+
+  const { data, error } = await db
+    .from("negocios")
+    .insert({ nombre, tipo })
+    .select()
+    .single();
+
+  if (error) {
+    mensaje("mensajeNegocio", error.message);
+    return;
+  }
+
+  negocioActual = data;
+  $("configuracion").classList.add("oculto");
+  await mostrarAplicacion();
+}
+
+async function mostrarAplicacion() {
+  $("layout").classList.remove("oculto");
+  $("tituloNegocio").textContent = negocioActual.nombre;
+
+  if (negocioActual.tipo !== "almacen") {
+    $("navFiado").classList.add("oculto");
+  } else {
+    $("navFiado").classList.remove("oculto");
+  }
+
+  await cargarPrueba();
+  await cargarResumen();
+}
+
+/* SUSCRIPCIÓN / PRUEBA */
+async function cargarPrueba() {
+  const { data, error } = await db
+    .from("suscripciones")
+    .select("estado,fin_prueba")
+    .eq("negocio_id", negocioActual.id)
+    .maybeSingle();
+
+  if (error || !data) {
+    $("estadoPrueba").textContent = "No se pudo consultar el período de prueba.";
+    return;
+  }
+
+  if (data.estado === "prueba") {
+    const restante = Math.max(0, Math.ceil(
+      (new Date(data.fin_prueba).getTime() - Date.now()) / 86400000
+    ));
+    $("estadoPrueba").textContent = `Prueba gratuita: ${restante} días restantes.`;
+  } else {
+    $("estadoPrueba").textContent = "Estado de cuenta: " + data.estado;
+  }
+}
+
+/* VENTAS Y GASTOS */
+async function insertarOperacion(tipo, importe, descripcion, categoria, formaPago) {
+  const { error } = await db.from("operaciones").insert({
+    negocio_id: negocioActual.id,
+    tipo,
+    categoria,
+    descripcion: descripcion || null,
+    importe,
+    forma_pago: formaPago || null,
+    fecha: fechaHoy()
+  });
+
+  return error;
+}
+
+async function guardarVenta() {
+  const importe = Number($("importeVenta").value);
+
+  if (!Number.isFinite(importe) || importe <= 0) {
+    mensaje("mensajeVenta", "Ingresá un importe válido.");
+    return;
+  }
+
+  const error = await insertarOperacion(
+    "venta", importe, $("descripcionVenta").value.trim(),
+    null, $("formaVenta").value
   );
 
-  let negocioActual = null;
-
-  // FECHA LOCAL
-  function fechaHoy() {
-    const fecha = new Date();
-    const anio = fecha.getFullYear();
-    const mes = String(fecha.getMonth() + 1).padStart(2, "0");
-    const dia = String(fecha.getDate()).padStart(2, "0");
-
-    return `${anio}-${mes}-${dia}`;
+  if (error) {
+    mensaje("mensajeVenta", error.message);
+    return;
   }
 
-  // FORMATO DE DINERO
-  function dinero(valor) {
-    return "$" + Number(valor).toLocaleString("es-AR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+  $("importeVenta").value = "";
+  $("descripcionVenta").value = "";
+  mensaje("mensajeVenta", "Venta guardada correctamente.");
+  await cargarResumen();
+}
+
+async function guardarGasto() {
+  const importe = Number($("importeGasto").value);
+
+  if (!Number.isFinite(importe) || importe <= 0) {
+    mensaje("mensajeGasto", "Ingresá un importe válido.");
+    return;
+  }
+
+  const error = await insertarOperacion(
+    "gasto", importe, $("descripcionGasto").value.trim(),
+    $("categoriaGasto").value, $("formaGasto").value
+  );
+
+  if (error) {
+    mensaje("mensajeGasto", error.message);
+    return;
+  }
+
+  $("importeGasto").value = "";
+  $("descripcionGasto").value = "";
+  mensaje("mensajeGasto", "Gasto guardado correctamente.");
+  await cargarResumen();
+}
+
+/* RESUMEN DIARIO */
+async function cargarResumen() {
+  if (!negocioActual) return;
+
+  const { data, error } = await db
+    .from("operaciones")
+    .select("*")
+    .eq("negocio_id", negocioActual.id)
+    .eq("fecha", fechaHoy())
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    $("historialHoy").textContent = error.message;
+    return;
+  }
+
+  let ventas = 0;
+  let gastos = 0;
+  $("historialHoy").innerHTML = "";
+
+  if (!data.length) {
+    $("historialHoy").textContent = "Todavía no hay movimientos hoy.";
+  }
+
+  for (const op of data) {
+    const importe = Number(op.importe);
+
+    if (op.tipo === "venta") ventas += importe;
+    else gastos += importe;
+
+    const div = document.createElement("div");
+    div.className = "registro";
+
+    const titulo = document.createElement("strong");
+    titulo.textContent = op.tipo === "venta" ? "Ingreso" : "Gasto";
+
+    const detalle = document.createElement("div");
+    detalle.textContent = op.descripcion || "Sin descripción";
+
+    const valor = document.createElement("div");
+    valor.className = op.tipo === "venta" ? "positivo" : "negativo";
+    valor.textContent = (op.tipo === "venta" ? "+" : "-") + dinero(importe);
+
+    div.append(titulo, detalle, valor);
+    $("historialHoy").appendChild(div);
+  }
+
+  $("totalVentas").textContent = dinero(ventas);
+  $("totalGastos").textContent = dinero(gastos);
+
+  const resultado = ventas - gastos;
+  $("gananciaNeta").textContent = dinero(resultado);
+  $("gananciaNeta").className = "numero " + (resultado >= 0 ? "positivo" : "negativo");
+}
+
+/* FIADO: CLIENTES */
+async function obtenerCliente(nombre) {
+  const { data, error } = await db
+    .from("clientes")
+    .select("*")
+    .eq("negocio_id", negocioActual.id)
+    .ilike("nombre", nombre.trim())
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+async function crearOEncontrarCliente(nombre) {
+  let cliente = await obtenerCliente(nombre);
+
+  if (cliente) return cliente;
+
+  const { data, error } = await db
+    .from("clientes")
+    .insert({
+      negocio_id: negocioActual.id,
+      nombre: nombre.trim()
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+async function guardarFiado() {
+  const nombre = $("nombreCliente").value.trim();
+  const producto = $("productoFiado").value.trim();
+  const importe = Number($("importeFiado").value);
+
+  if (!nombre || !producto || !Number.isFinite(importe) || importe <= 0) {
+    mensaje("mensajeFiado", "Completá el nombre, el producto y un precio válido.");
+    return;
+  }
+
+  try {
+    const cliente = await crearOEncontrarCliente(nombre);
+
+    const { error } = await db.from("fiados").insert({
+      cliente_id: cliente.id,
+      producto,
+      importe,
+      fecha: fechaHoy()
     });
+
+    if (error) throw error;
+
+    $("productoFiado").value = "";
+    $("importeFiado").value = "";
+    mensaje("mensajeFiado", "Fiado guardado. No se sumó a los ingresos.");
+
+    await cargarClientes();
+    await abrirCliente(cliente);
+  } catch (error) {
+    mensaje("mensajeFiado", "Error: " + error.message);
+  }
+}
+
+async function cargarClientes() {
+  const { data, error } = await db
+    .from("clientes")
+    .select("*")
+    .eq("negocio_id", negocioActual.id)
+    .order("nombre");
+
+  if (error) {
+    $("listaClientes").textContent = error.message;
+    return;
   }
 
-  function mostrarMensaje(elemento, mensaje) {
-    document.getElementById(elemento).textContent = mensaje;
+  clientesActuales = data || [];
+  filtrarClientes();
+}
+
+function filtrarClientes() {
+  const texto = $("buscarCliente").value.trim().toLowerCase();
+  const lista = $("listaClientes");
+  lista.innerHTML = "";
+
+  const encontrados = clientesActuales.filter(c =>
+    c.nombre.toLowerCase().includes(texto)
+  );
+
+  if (!encontrados.length) {
+    lista.textContent = "No se encontraron clientes.";
+    return;
   }
 
-  // REGISTRO
-  async function registrarse() {
-    const email = document.getElementById("correo").value.trim();
-    const password = document.getElementById("contrasena").value;
+  for (const cliente of encontrados) {
+    const boton = document.createElement("button");
+    boton.className = "secundario cliente";
+    boton.style.width = "100%";
+    boton.textContent = cliente.nombre;
+    boton.onclick = () => abrirCliente(cliente);
+    lista.appendChild(boton);
+  }
+}
 
-    if (!email || !password) {
-      mostrarMensaje("mensajeAcceso", "Completá el correo y la contraseña.");
-      return;
-    }
+/* FIADO: DEUDA Y PAGOS */
+async function abrirCliente(cliente) {
+  clienteSeleccionado = cliente;
+  $("detalleCliente").classList.remove("oculto");
+  $("tituloCliente").textContent = cliente.nombre;
+  $("mensajePago").textContent = "";
 
-    if (password.length < 6) {
-      mostrarMensaje("mensajeAcceso", "La contraseña debe tener al menos 6 caracteres.");
-      return;
-    }
+  const [fiadosResp, pagosResp] = await Promise.all([
+    db.from("fiados").select("*").eq("cliente_id", cliente.id).order("created_at", {ascending:false}),
+    db.from("pagos_fiado").select("*").eq("cliente_id", cliente.id).order("created_at", {ascending:false})
+  ]);
 
-    const { data, error } = await db.auth.signUp({
-      email: email,
-      password: password
-    });
+  if (fiadosResp.error || pagosResp.error) {
+    $("detalleDeuda").textContent =
+      (fiadosResp.error || pagosResp.error).message;
+    return;
+  }
 
-    if (error) {
-      mostrarMensaje("mensajeAcceso", error.message);
-      return;
-    }
+  const fiados = fiadosResp.data || [];
+  const pagos = pagosResp.data || [];
 
-    if (data.session) {
-      await comprobarCuenta();
+  const totalFiado = fiados.reduce((s, f) => s + Number(f.importe), 0);
+  const totalPagado = pagos.reduce((s, p) => s + Number(p.importe), 0);
+  const deuda = totalFiado - totalPagado;
+
+  $("detalleDeuda").innerHTML = "";
+
+  const resumen = document.createElement("div");
+  resumen.className = "tarjeta";
+  resumen.innerHTML =
+    `<div>Total fiado: <strong>${dinero(totalFiado)}</strong></div>
+     <div>Total pagado: <strong class="positivo">${dinero(totalPagado)}</strong></div>
+     <div>Saldo pendiente: <strong class="${deuda > 0 ? "negativo" : "positivo"}">${dinero(deuda)}</strong></div>`;
+  $("detalleDeuda").appendChild(resumen);
+
+  $("importePago").value = "";
+  $("importePago").max = Math.max(0, deuda);
+  $("descripcionPago").value = "";
+
+  $("historialCliente").innerHTML = "";
+
+  const movimientos = [
+    ...fiados.map(f => ({...f, clase:"fiado"})),
+    ...pagos.map(p => ({...p, clase:"pago"}))
+  ].sort((a,b) => new Date(b.created_at || b.fecha) - new Date(a.created_at || a.fecha));
+
+  if (!movimientos.length) {
+    $("historialCliente").textContent = "Todavía no hay movimientos.";
+  }
+
+  for (const mov of movimientos) {
+    const div = document.createElement("div");
+    div.className = "registro";
+
+    if (mov.clase === "fiado") {
+      div.innerHTML =
+        `<strong>Fiado: ${escaparHTML(mov.producto)}</strong>
+         <div>${mov.fecha || ""}</div>
+         <div class="negativo">${dinero(mov.importe)}</div>`;
     } else {
-      mostrarMensaje(
-        "mensajeAcceso",
-        "Cuenta creada. Revisá tu correo para confirmar la dirección y después iniciá sesión."
-      );
+      div.innerHTML =
+        `<strong>Pago recibido</strong>
+         <div>${escaparHTML(mov.descripcion || "Pago")}</div>
+         <div class="positivo">-${dinero(mov.importe)}</div>`;
     }
+
+    $("historialCliente").appendChild(div);
+  }
+}
+
+function escaparHTML(texto) {
+  return String(texto).replace(/[&<>"']/g, c => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;",
+    '"':"&quot;", "'":"&#39;"
+  })[c]);
+}
+
+async function guardarPago() {
+  if (!clienteSeleccionado) return;
+
+  const importe = Number($("importePago").value);
+  const descripcion = $("descripcionPago").value.trim();
+
+  if (!Number.isFinite(importe) || importe <= 0) {
+    mensaje("mensajePago", "Ingresá un importe válido.");
+    return;
   }
 
-  // INICIAR SESIÓN
-  async function iniciarSesion() {
-    const email = document.getElementById("correo").value.trim();
-    const password = document.getElementById("contrasena").value;
+  const { data: fiados, error: errorFiados } = await db
+    .from("fiados")
+    .select("importe")
+    .eq("cliente_id", clienteSeleccionado.id);
 
-    const { error } = await db.auth.signInWithPassword({
-      email: email,
-      password: password
-    });
-
-    if (error) {
-      mostrarMensaje("mensajeAcceso", error.message);
-      return;
-    }
-
-    await comprobarCuenta();
+  if (errorFiados) {
+    mensaje("mensajePago", errorFiados.message);
+    return;
   }
 
-  // CERRAR SESIÓN
-  async function cerrarSesion() {
-    await db.auth.signOut();
-    location.reload();
+  const { data: pagos, error: errorPagos } = await db
+    .from("pagos_fiado")
+    .select("importe")
+    .eq("cliente_id", clienteSeleccionado.id);
+
+  if (errorPagos) {
+    mensaje("mensajePago", errorPagos.message);
+    return;
   }
 
-  // COMPROBAR SI TIENE NEGOCIO
-  async function comprobarCuenta() {
-    const { data: { user }, error: errorUsuario } = await db.auth.getUser();
+  const debe = (fiados || []).reduce((s,f) => s + Number(f.importe), 0);
+  const pagoPrevio = (pagos || []).reduce((s,p) => s + Number(p.importe), 0);
+  const saldo = debe - pagoPrevio;
 
-    if (errorUsuario || !user) {
-      mostrarMensaje("mensajeAcceso", "No se pudo comprobar la sesión.");
-      return;
-    }
-
-    document.getElementById("acceso").classList.add("oculto");
-
-    const { data, error } = await db
-      .from("negocios")
-      .select("*")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (error) {
-      alert("Error al buscar el negocio: " + error.message);
-      return;
-    }
-
-    if (!data) {
-      document.getElementById("configuracion").classList.remove("oculto");
-      return;
-    }
-
-    negocioActual = data;
-    await mostrarAplicacion();
+  if (importe > saldo + 0.001) {
+    mensaje("mensajePago", "El pago no puede ser mayor que la deuda pendiente: " + dinero(saldo));
+    return;
   }
 
-  // CREAR NEGOCIO
-  async function crearNegocio() {
-    const nombre = document.getElementById("nombreNegocio").value.trim();
-    const tipo = document.getElementById("tipoNegocio").value;
+  // Registrar el ingreso primero.
+  const errorOperacion = await insertarOperacion(
+    "venta",
+    importe,
+    "Cobro de fiado - " + clienteSeleccionado.nombre,
+    null,
+    ""
+  );
 
-    if (!nombre) {
-      mostrarMensaje("mensajeNegocio", "Escribí el nombre del negocio.");
-      return;
-    }
-
-    const { data, error } = await db
-      .from("negocios")
-      .insert({
-        nombre: nombre,
-        tipo: tipo
-      })
-      .select()
-      .single();
-
-    if (error) {
-      mostrarMensaje("mensajeNegocio", error.message);
-      return;
-    }
-
-    negocioActual = data;
-    document.getElementById("configuracion").classList.add("oculto");
-
-    await mostrarAplicacion();
+  if (errorOperacion) {
+    mensaje("mensajePago", "No se pudo registrar el ingreso: " + errorOperacion.message);
+    return;
   }
 
-  // MOSTRAR APLICACIÓN
-  async function mostrarAplicacion() {
-    document.getElementById("aplicacion").classList.remove("oculto");
+  const { error } = await db.from("pagos_fiado").insert({
+    cliente_id: clienteSeleccionado.id,
+    importe,
+    fecha: fechaHoy(),
+    descripcion: descripcion || "Pago recibido"
+  });
 
-    document.getElementById("tituloNegocio").textContent =
-      negocioActual.nombre;
-
-    await cargarPrueba();
-    await cargarOperaciones();
-  }
-
-  // MOSTRAR ESTADO DE PRUEBA
-  async function cargarPrueba() {
-    const { data, error } = await db
-      .from("suscripciones")
-      .select("estado, fin_prueba")
-      .eq("negocio_id", negocioActual.id)
-      .maybeSingle();
-
-    if (error) {
-      document.getElementById("estadoPrueba").textContent =
-        "No se pudo consultar el estado de la prueba.";
-      return;
-    }
-
-    if (!data) {
-      document.getElementById("estadoPrueba").textContent =
-        "No se encontró información de la prueba.";
-      return;
-    }
-
-    if (data.estado === "prueba") {
-      const fin = new Date(data.fin_prueba);
-      const restante = Math.max(
-        0,
-        Math.ceil((fin.getTime() - Date.now()) / 86400000)
-      );
-
-      document.getElementById("estadoPrueba").textContent =
-        "Período de prueba: " + restante + " días restantes.";
-    } else {
-      document.getElementById("estadoPrueba").textContent =
-        "Estado de la cuenta: " + data.estado;
-    }
-  }
-
-  // MOSTRAR CATEGORÍA SEGÚN TIPO
-  function actualizarFormulario() {
-    const tipo = document.getElementById("tipoOperacion").value;
-
-    document.getElementById("categoriaGasto").classList.toggle(
-      "oculto",
-      tipo !== "gasto"
+  if (error) {
+    mensaje("mensajePago",
+      "El ingreso quedó registrado, pero no se guardó el pago en Fiado. No lo vuelvas a cargar; avisá para corregirlo. Error: " + error.message
     );
+    await cargarResumen();
+    return;
   }
 
-  // GUARDAR VENTA O GASTO
-  async function guardarOperacion() {
-    if (!negocioActual) return;
+  mensaje("mensajePago", "Pago registrado correctamente.");
+  await abrirCliente(clienteSeleccionado);
+  await cargarResumen();
+}
 
-    const tipo = document.getElementById("tipoOperacion").value;
-    const importe = Number(document.getElementById("importe").value);
-    const descripcion = document.getElementById("descripcion").value.trim();
-    const formaPago = document.getElementById("formaPago").value;
+/* GRÁFICOS Y CALENDARIO */
+function prepararCalendario() {
+  const ahora = new Date();
+  const mes = $("mesGrafico");
+  const anio = $("anioGrafico");
 
-    if (!Number.isFinite(importe) || importe <= 0) {
-      mostrarMensaje("mensajeOperacion", "Ingresá un importe válido.");
-      return;
+  if (!mes.options.length) {
+    const nombres = [
+      "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+      "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+    ];
+
+    nombres.forEach((n,i) => {
+      const op = document.createElement("option");
+      op.value = i;
+      op.textContent = n;
+      mes.appendChild(op);
+    });
+
+    for (let a = ahora.getFullYear()-3; a <= ahora.getFullYear()+1; a++) {
+      const op = document.createElement("option");
+      op.value = a;
+      op.textContent = a;
+      anio.appendChild(op);
     }
 
-    const categoria = tipo === "gasto"
-      ? document.getElementById("categoria").value
-      : null;
-
-    const { error } = await db
-      .from("operaciones")
-      .insert({
-        negocio_id: negocioActual.id,
-        tipo: tipo,
-        categoria: categoria,
-        descripcion: descripcion || null,
-        importe: importe,
-        forma_pago: formaPago || null,
-        fecha: fechaHoy()
-      });
-
-    if (error) {
-      mostrarMensaje("mensajeOperacion", "Error: " + error.message);
-      return;
-    }
-
-    document.getElementById("importe").value = "";
-    document.getElementById("descripcion").value = "";
-
-    mostrarMensaje("mensajeOperacion", "¡Operación guardada!");
-
-    await cargarOperaciones();
+    mes.value = ahora.getMonth();
+    anio.value = ahora.getFullYear();
   }
 
-  // CARGAR OPERACIONES Y CALCULAR TOTALES
-  async function cargarOperaciones() {
-    if (!negocioActual) return;
+  cargarCalendario();
+}
 
-    const { data, error } = await db
-      .from("operaciones")
-      .select("*")
-      .eq("negocio_id", negocioActual.id)
-      .eq("fecha", fechaHoy())
-      .order("created_at", { ascending: false });
+async function cargarCalendario() {
+  if (!negocioActual) return;
 
-    if (error) {
-      alert("Error al cargar operaciones: " + error.message);
-      return;
-    }
+  const mes = Number($("mesGrafico").value);
+  const anio = Number($("anioGrafico").value);
 
-    let ventas = 0;
-    let productos = 0;
-    let publicidad = 0;
-    let otros = 0;
+  const desde = `${anio}-${String(mes+1).padStart(2,"0")}-01`;
+  const ultimoDia = new Date(anio, mes+1, 0).getDate();
+  const hasta = `${anio}-${String(mes+1).padStart(2,"0")}-${String(ultimoDia).padStart(2,"0")}`;
 
-    const historial = document.getElementById("historial");
-    historial.innerHTML = "";
+  const { data, error } = await db
+    .from("operaciones")
+    .select("fecha,tipo,importe")
+    .eq("negocio_id", negocioActual.id)
+    .gte("fecha", desde)
+    .lte("fecha", hasta);
 
-    if (!data || data.length === 0) {
-      historial.textContent = "Todavía no hay operaciones registradas hoy.";
-    }
-
-    for (const op of data || []) {
-      const importe = Number(op.importe);
-
-      if (op.tipo === "venta") {
-        ventas += importe;
-      } else if (op.categoria === "productos") {
-        productos += importe;
-      } else if (op.categoria === "publicidad") {
-        publicidad += importe;
-      } else if (op.categoria === "otros") {
-        otros += importe;
-      }
-
-      const elemento = document.createElement("div");
-      elemento.className = "operacion";
-
-      const titulo = document.createElement("strong");
-      titulo.textContent =
-        (op.tipo === "venta" ? "Venta" : "Gasto") +
-        (op.categoria ? " - " + op.categoria : "");
-
-      const detalle = document.createElement("div");
-      detalle.textContent = op.descripcion || "Sin descripción";
-
-      const importeTexto = document.createElement("div");
-      importeTexto.className =
-        op.tipo === "venta" ? "positivo" : "negativo";
-      importeTexto.textContent =
-        (op.tipo === "venta" ? "+" : "-") + dinero(importe);
-
-      elemento.append(titulo, detalle, importeTexto);
-      historial.appendChild(elemento);
-    }
-
-    const gastos = productos + publicidad + otros;
-    const ganancia = ventas - gastos;
-
-    document.getElementById("totalVentas").textContent = dinero(ventas);
-    document.getElementById("gastosProductos").textContent = dinero(productos);
-    document.getElementById("gastosPublicidad").textContent = dinero(publicidad);
-    document.getElementById("otrosGastos").textContent = dinero(otros);
-    document.getElementById("totalGastos").textContent = dinero(gastos);
-
-    const resultado = document.getElementById("gananciaNeta");
-    resultado.textContent = dinero(ganancia);
-    resultado.className = ganancia >= 0 ? "positivo" : "negativo";
+  if (error) {
+    $("calendario").textContent = error.message;
+    return;
   }
 
-  // RECUPERAR SESIÓN AL ABRIR LA PÁGINA
-  async function iniciarAplicacion() {
-    const { data: { session } } = await db.auth.getSession();
-
-    if (session) {
-      await comprobarCuenta();
-    }
+  const resultados = {};
+  for (const op of data || []) {
+    if (!resultados[op.fecha]) resultados[op.fecha] = 0;
+    resultados[op.fecha] += op.tipo === "venta"
+      ? Number(op.importe)
+      : -Number(op.importe);
   }
 
-  iniciarAplicacion();
+  let ganancias = 0;
+  let perdidas = 0;
+  let total = 0;
+
+  Object.values(resultados).forEach(v => {
+    if (v > 0) ganancias += v;
+    if (v < 0) perdidas += Math.abs(v);
+    total += v;
+  });
+
+  $("sumaGanancias").textContent = dinero(ganancias);
+  $("sumaPerdidas").textContent = dinero(perdidas);
+  $("resultadoMes").textContent = dinero(total);
+  $("resultadoMes").className = "numero " + (total >= 0 ? "positivo" : "negativo");
+
+  const calendario = $("calendario");
+  calendario.innerHTML = "";
+
+  ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].forEach(nombre => {
+    const d = document.createElement("div");
+    d.className = "diaSemana";
+    d.textContent = nombre;
+    calendario.appendChild(d);
+  });
+
+  const primerDia = new Date(anio, mes, 1).getDay();
+  const desplazamiento = (primerDia + 6) % 7;
+
+  for (let i = 0; i < desplazamiento; i++) {
+    const vacio = document.createElement("div");
+    vacio.className = "dia vacio";
+    calendario.appendChild(vacio);
+  }
+
+  for (let dia = 1; dia <= ultimoDia; dia++) {
+    const fecha = `${anio}-${String(mes+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`;
+    const valor = resultados[fecha] || 0;
+    const celda = document.createElement("button");
+
+    celda.className = "dia";
+    if (valor > 0) celda.classList.add("ganancia");
+    if (valor < 0) celda.classList.add("perdida");
+    if (diaSeleccionado === fecha) celda.classList.add("seleccionado");
+
+    const numero = document.createElement("strong");
+    numero.textContent = dia;
+    celda.appendChild(numero);
+
+    if (resultados[fecha] !== undefined) {
+      const monto = document.createElement("span");
+      monto.textContent = dinero(valor);
+      celda.appendChild(monto);
+    }
+
+    celda.onclick = () => mostrarDetalleDia(fecha, valor);
+    calendario.appendChild(celda);
+  }
+
+  if (diaSeleccionado) {
+    const valor = resultados[diaSeleccionado];
+    if (diaSeleccionado.startsWith(desde.slice(0,7))) {
+      mostrarDetalleDia(diaSeleccionado, valor || 0);
+    }
+  }
+}
+
+function mostrarDetalleDia(fecha, valor) {
+  diaSeleccionado = fecha;
+  const partes = fecha.split("-");
+  $("detalleDia").textContent =
+    `Resultado del ${partes[2]}/${partes[1]}/${partes[0]}: ${dinero(valor)}`;
+  cargarCalendario();
+}
+
+/* INICIO */
+async function iniciarAplicacion() {
+  temaInicial();
+
+  const { data: { session } } = await db.auth.getSession();
+  if (session) await comprobarCuenta();
+}
+
+iniciarAplicacion();
 </script>
 
 </body>
