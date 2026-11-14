@@ -1,361 +1,542 @@
-   ```html
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de ganancias</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de ganancias</title>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #eeeeee;
-            display: flex;
-            justify-content: center;
-            padding: 30px 15px;
-        }
+  <style>
+    * { box-sizing: border-box; }
 
-        .calculadora {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 400px;
-            box-sizing: border-box;
-        }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f1f4f8;
+      margin: 0;
+      padding: 20px;
+      color: #202938;
+    }
 
-        h1, h2 {
-            text-align: center;
-        }
+    .contenedor {
+      max-width: 650px;
+      margin: auto;
+    }
 
-        input, button {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 12px;
-            margin: 8px 0;
-            font-size: 16px;
-        }
+    .panel {
+      background: white;
+      padding: 22px;
+      border-radius: 12px;
+      margin-bottom: 18px;
+      box-shadow: 0 2px 8px #00000012;
+    }
 
-        button {
-            background: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-        }
+    h1, h2 { margin-top: 0; }
 
-        button.secundario {
-            background: #555;
-        }
+    input, select, button {
+      width: 100%;
+      padding: 12px;
+      margin: 7px 0;
+      border: 1px solid #ccd3dd;
+      border-radius: 7px;
+      font-size: 16px;
+    }
 
-        #resultado, #historial {
-            margin-top: 20px;
-            line-height: 1.7;
-            overflow-wrap: anywhere;
-        }
+    button {
+      background: #1769e0;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
 
-        .registro {
-            border-top: 1px solid #ddd;
-            padding: 10px 0;
-        }
+    button:hover { background: #1054b9; }
 
-        .oculto {
-            display: none;
-        }
+    .secundario { background: #596579; }
+    .peligro { background: #c0392b; }
 
-        .mensaje {
-            text-align: center;
-            font-size: 14px;
-        }
-    </style>
+    .oculto { display: none; }
+
+    .dato {
+      background: #f1f4f8;
+      padding: 13px;
+      border-radius: 7px;
+      margin: 8px 0;
+    }
+
+    .operacion {
+      border-bottom: 1px solid #e1e5eb;
+      padding: 12px 0;
+    }
+
+    .positivo { color: #168344; }
+    .negativo { color: #c0392b; }
+
+    small { color: #657080; }
+  </style>
 </head>
 
 <body>
+<div class="contenedor">
 
-<div class="calculadora">
+  <h1>Control de ganancias</h1>
 
-    <h1>Calculadora de ganancias</h1>
+  <!-- ACCESO -->
+  <section id="acceso" class="panel">
+    <h2>Iniciar sesión</h2>
 
-    <!-- ACCESO -->
-    <section id="acceso">
+    <input id="correo" type="email" placeholder="Correo electrónico">
+    <input id="contrasena" type="password" placeholder="Contraseña">
 
-        <h2>Iniciar sesión</h2>
+    <button onclick="iniciarSesion()">Iniciar sesión</button>
+    <button onclick="registrarse()" class="secundario">Crear cuenta</button>
 
-        <label>Correo electrónico</label>
-        <input type="email" id="correo" placeholder="Tu correo">
+    <p id="mensajeAcceso"></p>
+  </section>
 
-        <label>Contraseña</label>
-        <input type="password" id="contrasena" placeholder="Tu contraseña">
+  <!-- CONFIGURAR NEGOCIO -->
+  <section id="configuracion" class="panel oculto">
+    <h2>Configurar negocio</h2>
 
-        <button onclick="iniciarSesion()">Iniciar sesión</button>
+    <p>Antes de comenzar, configurá tu negocio.</p>
 
-        <button class="secundario" onclick="registrarse()">
-            Crear cuenta
-        </button>
+    <input id="nombreNegocio" placeholder="Nombre del negocio">
 
-        <p id="mensajeAcceso" class="mensaje"></p>
+    <select id="tipoNegocio">
+      <option value="almacen">Almacén</option>
+      <option value="digital">Negocio digital</option>
+    </select>
 
+    <button onclick="crearNegocio()">Guardar negocio</button>
+    <p id="mensajeNegocio"></p>
+  </section>
+
+  <!-- APLICACIÓN -->
+  <main id="aplicacion" class="oculto">
+
+    <section class="panel">
+      <h2 id="tituloNegocio">Mi negocio</h2>
+      <p id="estadoPrueba"></p>
+      <button class="secundario" onclick="cerrarSesion()">Cerrar sesión</button>
     </section>
 
-    <!-- CALCULADORA -->
-    <section id="aplicacion" class="oculto">
+    <!-- REGISTRAR OPERACIÓN -->
+    <section class="panel">
+      <h2>Registrar operación</h2>
 
-        <p id="usuario"></p>
+      <label>Tipo de operación</label>
+      <select id="tipoOperacion" onchange="actualizarFormulario()">
+        <option value="venta">Venta</option>
+        <option value="gasto">Gasto</option>
+      </select>
 
-        <button class="secundario" onclick="cerrarSesion()">
-            Cerrar sesión
-        </button>
+      <div id="categoriaGasto" class="oculto">
+        <label>Categoría del gasto</label>
+        <select id="categoria">
+          <option value="productos">Productos</option>
+          <option value="publicidad">Publicidad</option>
+          <option value="otros">Otros</option>
+        </select>
+      </div>
 
-        <hr>
+      <input id="descripcion" placeholder="Descripción (opcional)">
 
-        <h2>Registrar ganancias</h2>
+      <label>Importe</label>
+      <input id="importe" type="number" min="0.01" step="0.01" placeholder="Ejemplo: 1500">
 
-        <label>¿Cuánto ganaste hoy?</label>
-        <input type="number" id="ganancia" min="0" step="any">
+      <label>Forma de pago</label>
+      <select id="formaPago">
+        <option value="">No especificada</option>
+        <option value="efectivo">Efectivo</option>
+        <option value="transferencia">Transferencia</option>
+        <option value="tarjeta">Tarjeta</option>
+        <option value="otro">Otro</option>
+      </select>
 
-        <label>¿Cuánto gastaste en publicidad?</label>
-        <input type="number" id="perdida" min="0" step="any">
-
-        <label>¿Cuánto ganaste ayer?</label>
-        <input type="number" id="anterior" min="0" step="any">
-
-        <button onclick="calcular()">Calcular y guardar</button>
-
-        <div id="resultado"></div>
-
-        <hr>
-
-        <h2>Mi historial</h2>
-
-        <div id="historial">Cargando historial...</div>
-
+      <button onclick="guardarOperacion()">Guardar operación</button>
+      <p id="mensajeOperacion"></p>
     </section>
 
+    <!-- RESUMEN -->
+    <section class="panel">
+      <h2>Resumen de hoy</h2>
+
+      <div class="dato">
+        Ventas: <strong id="totalVentas">$0</strong>
+      </div>
+
+      <div class="dato">
+        Gastos en productos: <strong id="gastosProductos">$0</strong>
+      </div>
+
+      <div class="dato">
+        Gastos en publicidad: <strong id="gastosPublicidad">$0</strong>
+      </div>
+
+      <div class="dato">
+        Otros gastos: <strong id="otrosGastos">$0</strong>
+      </div>
+
+      <div class="dato">
+        Total de gastos: <strong id="totalGastos">$0</strong>
+      </div>
+
+      <div class="dato">
+        Ganancia neta: <strong id="gananciaNeta">$0</strong>
+      </div>
+
+      <button class="secundario" onclick="cargarOperaciones()">Actualizar resumen</button>
+    </section>
+
+    <!-- HISTORIAL DEL DÍA -->
+    <section class="panel">
+      <h2>Operaciones de hoy</h2>
+      <div id="historial"></div>
+    </section>
+
+  </main>
 </div>
 
 <script>
-    // REEMPLAZÁ ESTOS DOS VALORES POR LOS DE TU PROYECTO
+  // CONFIGURACIÓN DE SUPABASE
+  const SUPABASE_URL = "https://pznculgjwextsrgyxufg.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_OBeSRP1Syio6IIjZXq8EXQ_Qu2wawYZ";
 
-    const SUPABASE_URL = "https://pznculgjwextsrgyxufg.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_OBeSRP1Syio6IIjZXq8EXQ_Qu2wawYZ";
+  const db = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
 
-    const db = supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_KEY
+  let negocioActual = null;
+
+  // FECHA LOCAL
+  function fechaHoy() {
+    const fecha = new Date();
+    const anio = fecha.getFullYear();
+    const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+    const dia = String(fecha.getDate()).padStart(2, "0");
+
+    return `${anio}-${mes}-${dia}`;
+  }
+
+  // FORMATO DE DINERO
+  function dinero(valor) {
+    return "$" + Number(valor).toLocaleString("es-AR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  function mostrarMensaje(elemento, mensaje) {
+    document.getElementById(elemento).textContent = mensaje;
+  }
+
+  // REGISTRO
+  async function registrarse() {
+    const email = document.getElementById("correo").value.trim();
+    const password = document.getElementById("contrasena").value;
+
+    if (!email || !password) {
+      mostrarMensaje("mensajeAcceso", "Completá el correo y la contraseña.");
+      return;
+    }
+
+    if (password.length < 6) {
+      mostrarMensaje("mensajeAcceso", "La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+
+    const { data, error } = await db.auth.signUp({
+      email: email,
+      password: password
+    });
+
+    if (error) {
+      mostrarMensaje("mensajeAcceso", error.message);
+      return;
+    }
+
+    if (data.session) {
+      await comprobarCuenta();
+    } else {
+      mostrarMensaje(
+        "mensajeAcceso",
+        "Cuenta creada. Revisá tu correo para confirmar la dirección y después iniciá sesión."
+      );
+    }
+  }
+
+  // INICIAR SESIÓN
+  async function iniciarSesion() {
+    const email = document.getElementById("correo").value.trim();
+    const password = document.getElementById("contrasena").value;
+
+    const { error } = await db.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
+
+    if (error) {
+      mostrarMensaje("mensajeAcceso", error.message);
+      return;
+    }
+
+    await comprobarCuenta();
+  }
+
+  // CERRAR SESIÓN
+  async function cerrarSesion() {
+    await db.auth.signOut();
+    location.reload();
+  }
+
+  // COMPROBAR SI TIENE NEGOCIO
+  async function comprobarCuenta() {
+    const { data: { user }, error: errorUsuario } = await db.auth.getUser();
+
+    if (errorUsuario || !user) {
+      mostrarMensaje("mensajeAcceso", "No se pudo comprobar la sesión.");
+      return;
+    }
+
+    document.getElementById("acceso").classList.add("oculto");
+
+    const { data, error } = await db
+      .from("negocios")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (error) {
+      alert("Error al buscar el negocio: " + error.message);
+      return;
+    }
+
+    if (!data) {
+      document.getElementById("configuracion").classList.remove("oculto");
+      return;
+    }
+
+    negocioActual = data;
+    await mostrarAplicacion();
+  }
+
+  // CREAR NEGOCIO
+  async function crearNegocio() {
+    const nombre = document.getElementById("nombreNegocio").value.trim();
+    const tipo = document.getElementById("tipoNegocio").value;
+
+    if (!nombre) {
+      mostrarMensaje("mensajeNegocio", "Escribí el nombre del negocio.");
+      return;
+    }
+
+    const { data, error } = await db
+      .from("negocios")
+      .insert({
+        nombre: nombre,
+        tipo: tipo
+      })
+      .select()
+      .single();
+
+    if (error) {
+      mostrarMensaje("mensajeNegocio", error.message);
+      return;
+    }
+
+    negocioActual = data;
+    document.getElementById("configuracion").classList.add("oculto");
+
+    await mostrarAplicacion();
+  }
+
+  // MOSTRAR APLICACIÓN
+  async function mostrarAplicacion() {
+    document.getElementById("aplicacion").classList.remove("oculto");
+
+    document.getElementById("tituloNegocio").textContent =
+      negocioActual.nombre;
+
+    await cargarPrueba();
+    await cargarOperaciones();
+  }
+
+  // MOSTRAR ESTADO DE PRUEBA
+  async function cargarPrueba() {
+    const { data, error } = await db
+      .from("suscripciones")
+      .select("estado, fin_prueba")
+      .eq("negocio_id", negocioActual.id)
+      .maybeSingle();
+
+    if (error) {
+      document.getElementById("estadoPrueba").textContent =
+        "No se pudo consultar el estado de la prueba.";
+      return;
+    }
+
+    if (!data) {
+      document.getElementById("estadoPrueba").textContent =
+        "No se encontró información de la prueba.";
+      return;
+    }
+
+    if (data.estado === "prueba") {
+      const fin = new Date(data.fin_prueba);
+      const restante = Math.max(
+        0,
+        Math.ceil((fin.getTime() - Date.now()) / 86400000)
+      );
+
+      document.getElementById("estadoPrueba").textContent =
+        "Período de prueba: " + restante + " días restantes.";
+    } else {
+      document.getElementById("estadoPrueba").textContent =
+        "Estado de la cuenta: " + data.estado;
+    }
+  }
+
+  // MOSTRAR CATEGORÍA SEGÚN TIPO
+  function actualizarFormulario() {
+    const tipo = document.getElementById("tipoOperacion").value;
+
+    document.getElementById("categoriaGasto").classList.toggle(
+      "oculto",
+      tipo !== "gasto"
     );
+  }
 
-    // MOSTRAR LA SECCIÓN CORRESPONDIENTE
+  // GUARDAR VENTA O GASTO
+  async function guardarOperacion() {
+    if (!negocioActual) return;
 
-    function mostrarAplicacion(sesion) {
-        document.getElementById("acceso").classList.toggle("oculto", sesion);
-        document.getElementById("aplicacion").classList.toggle("oculto", !sesion);
+    const tipo = document.getElementById("tipoOperacion").value;
+    const importe = Number(document.getElementById("importe").value);
+    const descripcion = document.getElementById("descripcion").value.trim();
+    const formaPago = document.getElementById("formaPago").value;
+
+    if (!Number.isFinite(importe) || importe <= 0) {
+      mostrarMensaje("mensajeOperacion", "Ingresá un importe válido.");
+      return;
     }
 
-    // REGISTRARSE
+    const categoria = tipo === "gasto"
+      ? document.getElementById("categoria").value
+      : null;
 
-    async function registrarse() {
-        const correo = document.getElementById("correo").value;
-        const contrasena = document.getElementById("contrasena").value;
-        const mensaje = document.getElementById("mensajeAcceso");
+    const { error } = await db
+      .from("operaciones")
+      .insert({
+        negocio_id: negocioActual.id,
+        tipo: tipo,
+        categoria: categoria,
+        descripcion: descripcion || null,
+        importe: importe,
+        forma_pago: formaPago || null,
+        fecha: fechaHoy()
+      });
 
-        if (!correo || !contrasena) {
-            mensaje.textContent = "Completá el correo y la contraseña.";
-            return;
-        }
-
-        const { data, error } = await db.auth.signUp({
-            email: correo,
-            password: contrasena,
-            options: {
-                emailRedirectTo: "https://rfpd1010.github.io/proyectos/"
-            }
-        });
-
-        if (error) {
-            mensaje.textContent = error.message;
-            return;
-        }
-
-        mensaje.textContent = data.session
-            ? "Cuenta creada correctamente."
-            : "Cuenta creada. Revisá tu correo para confirmar el registro.";
+    if (error) {
+      mostrarMensaje("mensajeOperacion", "Error: " + error.message);
+      return;
     }
 
-    // INICIAR SESIÓN
+    document.getElementById("importe").value = "";
+    document.getElementById("descripcion").value = "";
 
-    async function iniciarSesion() {
-        const correo = document.getElementById("correo").value;
-        const contrasena = document.getElementById("contrasena").value;
-        const mensaje = document.getElementById("mensajeAcceso");
+    mostrarMensaje("mensajeOperacion", "¡Operación guardada!");
 
-        const { error } = await db.auth.signInWithPassword({
-            email: correo,
-            password: contrasena
-        });
+    await cargarOperaciones();
+  }
 
-        if (error) {
-            mensaje.textContent = error.message;
-        }
+  // CARGAR OPERACIONES Y CALCULAR TOTALES
+  async function cargarOperaciones() {
+    if (!negocioActual) return;
+
+    const { data, error } = await db
+      .from("operaciones")
+      .select("*")
+      .eq("negocio_id", negocioActual.id)
+      .eq("fecha", fechaHoy())
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      alert("Error al cargar operaciones: " + error.message);
+      return;
     }
 
-    // CERRAR SESIÓN
+    let ventas = 0;
+    let productos = 0;
+    let publicidad = 0;
+    let otros = 0;
 
-    async function cerrarSesion() {
-        await db.auth.signOut();
+    const historial = document.getElementById("historial");
+    historial.innerHTML = "";
+
+    if (!data || data.length === 0) {
+      historial.textContent = "Todavía no hay operaciones registradas hoy.";
     }
 
-    // CALCULADORA
+    for (const op of data || []) {
+      const importe = Number(op.importe);
 
-    async function calcular() {
+      if (op.tipo === "venta") {
+        ventas += importe;
+      } else if (op.categoria === "productos") {
+        productos += importe;
+      } else if (op.categoria === "publicidad") {
+        publicidad += importe;
+      } else if (op.categoria === "otros") {
+        otros += importe;
+      }
 
-        const gananciaTexto = document.getElementById("ganancia").value;
-        const perdidaTexto = document.getElementById("perdida").value;
-        const anteriorTexto = document.getElementById("anterior").value;
+      const elemento = document.createElement("div");
+      elemento.className = "operacion";
 
-        if (
-            gananciaTexto === "" ||
-            perdidaTexto === "" ||
-            anteriorTexto === ""
-        ) {
-            alert("Completá todos los campos.");
-            return;
-        }
+      const titulo = document.createElement("strong");
+      titulo.textContent =
+        (op.tipo === "venta" ? "Venta" : "Gasto") +
+        (op.categoria ? " - " + op.categoria : "");
 
-        const ganancia = Number(gananciaTexto);
-        const perdida = Number(perdidaTexto);
-        const anterior = Number(anteriorTexto);
+      const detalle = document.createElement("div");
+      detalle.textContent = op.descripcion || "Sin descripción";
 
-        if (
-            !Number.isFinite(ganancia) ||
-            !Number.isFinite(perdida) ||
-            !Number.isFinite(anterior) ||
-            ganancia < 0 || perdida < 0 || anterior < 0
-        ) {
-            alert("Ingresá números válidos y no negativos.");
-            return;
-        }
+      const importeTexto = document.createElement("div");
+      importeTexto.className =
+        op.tipo === "venta" ? "positivo" : "negativo";
+      importeTexto.textContent =
+        (op.tipo === "venta" ? "+" : "-") + dinero(importe);
 
-        const ganancia_neta = ganancia - perdida;
-        const diferencia = ganancia_neta - anterior;
-
-        let resultado = "";
-
-        if (anterior !== 0) {
-            const porcentaje = (diferencia / anterior) * 100;
-            resultado += "Cambio: " + porcentaje.toFixed(2) + "%<br>";
-        } else {
-            resultado += "No se puede calcular el porcentaje porque ayer no hubo ganancias.<br>";
-        }
-
-        resultado += "Ganancia neta de hoy: $" + ganancia_neta + "<br>";
-
-        if (ganancia_neta > anterior) {
-            resultado += "Tu ganancia fue mayor que ayer.<br>";
-        } else if (ganancia_neta < anterior) {
-            resultado += "Tu ganancia fue menor que ayer.<br>";
-        } else {
-            resultado += "Tu ganancia fue igual que ayer.<br>";
-        }
-
-        const ganancia_total = ganancia_neta + anterior;
-
-        resultado += "Ganancia total: $" + ganancia_total;
-
-        document.getElementById("resultado").innerHTML = resultado;
-
-        // GUARDAR EN SUPABASE
-
-        const { error } = await db
-            .from("ganancias")
-            .insert({
-                ganancia: ganancia,
-                publicidad: perdida,
-                ganancia_neta: ganancia_neta
-            });
-
-        if (error) {
-            alert("No se pudo guardar: " + error.message);
-            return;
-        }
-
-        alert("¡Ganancia guardada correctamente!");
-
-        cargarHistorial();
+      elemento.append(titulo, detalle, importeTexto);
+      historial.appendChild(elemento);
     }
 
-    // HISTORIAL DE GANANCIAS
+    const gastos = productos + publicidad + otros;
+    const ganancia = ventas - gastos;
 
-    async function cargarHistorial() {
+    document.getElementById("totalVentas").textContent = dinero(ventas);
+    document.getElementById("gastosProductos").textContent = dinero(productos);
+    document.getElementById("gastosPublicidad").textContent = dinero(publicidad);
+    document.getElementById("otrosGastos").textContent = dinero(otros);
+    document.getElementById("totalGastos").textContent = dinero(gastos);
 
-        const contenedor = document.getElementById("historial");
-        contenedor.textContent = "Cargando historial...";
+    const resultado = document.getElementById("gananciaNeta");
+    resultado.textContent = dinero(ganancia);
+    resultado.className = ganancia >= 0 ? "positivo" : "negativo";
+  }
 
-        const { data, error } = await db
-            .from("ganancias")
-            .select("fecha, ganancia, publicidad, ganancia_neta")
-            .order("created_at", { ascending: false })
-            .limit(30);
+  // RECUPERAR SESIÓN AL ABRIR LA PÁGINA
+  async function iniciarAplicacion() {
+    const { data: { session } } = await db.auth.getSession();
 
-        if (error) {
-            contenedor.textContent = "Error al cargar el historial: " + error.message;
-            return;
-        }
-
-        contenedor.replaceChildren();
-
-        if (data.length === 0) {
-            contenedor.textContent = "Todavía no tenés ganancias registradas.";
-            return;
-        }
-
-        data.forEach(registro => {
-            const elemento = document.createElement("div");
-            elemento.className = "registro";
-
-            const fecha = document.createElement("strong");
-            fecha.textContent = registro.fecha;
-
-            const detalle = document.createElement("p");
-            detalle.textContent =
-                "Ganancia: $" + registro.ganancia +
-                " | Publicidad: $" + registro.publicidad +
-                " | Neto: $" + registro.ganancia_neta;
-
-            elemento.append(fecha, detalle);
-            contenedor.appendChild(elemento);
-        });
+    if (session) {
+      await comprobarCuenta();
     }
+  }
 
-    // COMPROBAR SI YA HAY UNA SESIÓN
-
-    db.auth.onAuthStateChange((evento, sesion) => {
-        mostrarAplicacion(!!sesion);
-
-        if (sesion) {
-            document.getElementById("usuario").textContent =
-                "Sesión iniciada: " + sesion.user.email;
-
-            cargarHistorial();
-        }
-    });
-
-    // COMPROBAR SESIÓN AL ABRIR LA PÁGINA
-
-    db.auth.getSession().then(({ data }) => {
-        mostrarAplicacion(!!data.session);
-
-        if (data.session) {
-            document.getElementById("usuario").textContent =
-                "Sesión iniciada: " + data.session.user.email;
-
-            cargarHistorial();
-        }
-    });
-
+  iniciarAplicacion();
 </script>
 
 </body>
 </html>
-```
