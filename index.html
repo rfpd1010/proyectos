@@ -330,45 +330,83 @@ h1,h2,h3 { margin-top:0; }
         <p id="mensajeGasto"></p>
       </div>
     </section>
+    
+<!-- FIADO -->
+<section id="seccion-fiado" class="oculto">
+  <h1>Fiado</h1>
 
-    <!-- FIADO -->
-    <section id="seccion-fiado" class="oculto">
-      <h1>Fiado</h1>
+  <div class="panel">
+    <h2>Clientes</h2>
 
-      <div class="panel">
-        <h2>Registrar producto fiado</h2>
-        <label>Nombre del cliente (obligatorio)</label>
-        <input id="nombreCliente" placeholder="Nombre del cliente">
-        <label>Producto</label>
-        <input id="productoFiado" placeholder="Producto">
-        <label>Precio</label>
-        <input id="importeFiado" type="number" min="0.01" step="0.01" placeholder="Precio">
-        <button class="accion" onclick="guardarFiado()">Guardar fiado</button>
-        <p id="mensajeFiado"></p>
-      </div>
+    <label>Seleccionar cliente</label>
+    <select id="clienteSeleccionado">
+      <option value="">Cargando clientes...</option>
+    </select>
 
-      <div class="panel">
-        <h2>Buscar cliente</h2>
-        <input id="buscarCliente" placeholder="Escribí el nombre..." oninput="filtrarClientes()">
-        <div id="listaClientes">Cargando clientes...</div>
-      </div>
+    <button class="accion" onclick="mostrarNuevoCliente()">
+      + Agregar nuevo cliente
+    </button>
 
-      <div id="detalleCliente" class="panel oculto">
-        <h2 id="tituloCliente"></h2>
-        <div id="detalleDeuda"></div>
+    <div id="formNuevoCliente" class="oculto">
+      <label>Nombre del nuevo cliente</label>
+      <input id="nuevoNombreCliente" placeholder="Nombre y apellido">
 
-        <h3>Registrar pago</h3>
-        <label>Importe que pagó</label>
-        <input id="importePago" type="number" min="0.01" step="0.01" placeholder="Importe">
-        <label>Descripción (opcional)</label>
-        <input id="descripcionPago" placeholder="Ej. Pago en efectivo">
-        <button class="accion" onclick="guardarPago()">Registrar pago</button>
-        <p id="mensajePago"></p>
+      <button class="accion" onclick="crearCliente()">
+        Guardar cliente
+      </button>
+      <button class="secundario" onclick="ocultarNuevoCliente()">
+        Cancelar
+      </button>
+    </div>
 
-        <h3>Historial de fiados y pagos</h3>
-        <div id="historialCliente"></div>
-      </div>
-    </section>
+    <p id="mensajeCliente"></p>
+
+    <h3>Clientes registrados</h3>
+    <div id="listaClientes"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Registrar producto fiado</h2>
+
+    <p id="clienteElegido" class="suave">
+      Primero seleccioná un cliente.
+    </p>
+
+    <label>Producto</label>
+    <input id="productoFiado" placeholder="Nombre del producto">
+
+    <label>Precio</label>
+    <input id="importeFiado" type="number" min="0.01"
+           step="0.01" placeholder="Precio">
+
+    <button class="accion" onclick="guardarFiado()">
+      Guardar fiado
+    </button>
+
+    <p id="mensajeFiado"></p>
+  </div>
+
+  <div id="detalleCliente" class="panel oculto">
+    <h2 id="tituloCliente"></h2>
+    <div id="detalleDeuda"></div>
+
+    <h3>Registrar pago</h3>
+    <label>Importe que pagó</label>
+    <input id="importePago" type="number" min="0.01"
+           step="0.01" placeholder="Importe">
+
+    <label>Descripción (opcional)</label>
+    <input id="descripcionPago" placeholder="Ej. Pago en efectivo">
+
+    <button class="accion" onclick="guardarPago()">
+      Registrar pago
+    </button>
+    <p id="mensajePago"></p>
+
+    <h3>Historial de fiados y pagos</h3>
+    <div id="historialCliente"></div>
+  </div>
+</section>
 
     <!-- GRÁFICOS -->
     <section id="seccion-graficos" class="oculto">
@@ -729,67 +767,60 @@ async function cargarResumen() {
 }
 
 /* FIADO: CLIENTES */
-async function obtenerCliente(nombre) {
-  const { data, error } = await db
-    .from("clientes")
-    .select("*")
-    .eq("negocio_id", negocioActual.id)
-    .ilike("nombre", nombre.trim())
-    .maybeSingle();
 
-  if (error) throw error;
-  return data;
+/* FIADO: CLIENTES */
+
+function mostrarNuevoCliente() {
+  $("formNuevoCliente").classList.remove("oculto");
+  $("nuevoNombreCliente").focus();
 }
 
-async function crearOEncontrarCliente(nombre) {
-  let cliente = await obtenerCliente(nombre);
+function ocultarNuevoCliente() {
+  $("formNuevoCliente").classList.add("oculto");
+  $("nuevoNombreCliente").value = "";
+}
 
-  if (cliente) return cliente;
+async function crearCliente() {
+  const nombre = $("nuevoNombreCliente").value.trim();
+
+  if (!nombre) {
+    mensaje("mensajeCliente", "Escribí el nombre del cliente.");
+    return;
+  }
+
+  const existente = clientesActuales.find(
+    c => c.nombre.trim().toLowerCase() === nombre.toLowerCase()
+  );
+
+  if (existente) {
+    mensaje("mensajeCliente", "Ese cliente ya está registrado.");
+    $("clienteSeleccionado").value = existente.id;
+    ocultarNuevoCliente();
+    actualizarClienteElegido();
+    return;
+  }
 
   const { data, error } = await db
     .from("clientes")
     .insert({
       negocio_id: negocioActual.id,
-      nombre: nombre.trim()
+      nombre: nombre
     })
     .select()
     .single();
 
-  if (error) throw error;
-  return data;
-}
-
-async function guardarFiado() {
-  const nombre = $("nombreCliente").value.trim();
-  const producto = $("productoFiado").value.trim();
-  const importe = Number($("importeFiado").value);
-
-  if (!nombre || !producto || !Number.isFinite(importe) || importe <= 0) {
-    mensaje("mensajeFiado", "Completá el nombre, el producto y un precio válido.");
+  if (error) {
+    mensaje("mensajeCliente", error.message);
     return;
   }
 
-  try {
-    const cliente = await crearOEncontrarCliente(nombre);
+  mensaje("mensajeCliente", "Cliente agregado correctamente.");
 
-    const { error } = await db.from("fiados").insert({
-      cliente_id: cliente.id,
-      producto,
-      importe,
-      fecha: fechaHoy()
-    });
+  ocultarNuevoCliente();
+  await cargarClientes();
 
-    if (error) throw error;
-
-    $("productoFiado").value = "";
-    $("importeFiado").value = "";
-    mensaje("mensajeFiado", "Fiado guardado. No se sumó a los ingresos.");
-
-    await cargarClientes();
-    await abrirCliente(cliente);
-  } catch (error) {
-    mensaje("mensajeFiado", "Error: " + error.message);
-  }
+  $("clienteSeleccionado").value = data.id;
+  actualizarClienteElegido();
 }
 
 async function cargarClientes() {
@@ -805,32 +836,111 @@ async function cargarClientes() {
   }
 
   clientesActuales = data || [];
-  filtrarClientes();
+
+  const selector = $("clienteSeleccionado");
+  const valorAnterior = selector.value;
+
+  selector.innerHTML = "";
+
+  const opcionInicial = document.createElement("option");
+  opcionInicial.value = "";
+  opcionInicial.textContent = "Seleccioná un cliente";
+  selector.appendChild(opcionInicial);
+
+  for (const cliente of clientesActuales) {
+    const opcion = document.createElement("option");
+    opcion.value = cliente.id;
+    opcion.textContent = cliente.nombre;
+    selector.appendChild(opcion);
+  }
+
+  if (clientesActuales.some(c => String(c.id) === valorAnterior)) {
+    selector.value = valorAnterior;
+  }
+
+  selector.onchange = actualizarClienteElegido;
+
+  mostrarListaClientes();
+  actualizarClienteElegido();
 }
 
-function filtrarClientes() {
-  const texto = $("buscarCliente").value.trim().toLowerCase();
+function mostrarListaClientes() {
   const lista = $("listaClientes");
   lista.innerHTML = "";
 
-  const encontrados = clientesActuales.filter(c =>
-    c.nombre.toLowerCase().includes(texto)
-  );
-
-  if (!encontrados.length) {
-    lista.textContent = "No se encontraron clientes.";
+  if (!clientesActuales.length) {
+    lista.textContent = "Todavía no hay clientes registrados.";
     return;
   }
 
-  for (const cliente of encontrados) {
+  for (const cliente of clientesActuales) {
     const boton = document.createElement("button");
+
     boton.className = "secundario cliente";
     boton.style.width = "100%";
     boton.textContent = cliente.nombre;
-    boton.onclick = () => abrirCliente(cliente);
+
+    boton.onclick = () => {
+      $("clienteSeleccionado").value = cliente.id;
+      actualizarClienteElegido();
+      abrirCliente(cliente);
+    };
+
     lista.appendChild(boton);
   }
 }
+
+function actualizarClienteElegido() {
+  const id = $("clienteSeleccionado").value;
+
+  clienteSeleccionado = clientesActuales.find(
+    c => String(c.id) === String(id)
+  ) || null;
+
+  $("clienteElegido").textContent = clienteSeleccionado
+    ? "Cliente seleccionado: " + clienteSeleccionado.nombre
+    : "Primero seleccioná un cliente.";
+}
+
+/* GUARDAR FIADO */
+async function guardarFiado() {
+  const cliente = clientesActuales.find(
+    c => String(c.id) === $("clienteSeleccionado").value
+  );
+
+  const producto = $("productoFiado").value.trim();
+  const importe = Number($("importeFiado").value);
+
+  if (!cliente) {
+    mensaje("mensajeFiado", "Seleccioná un cliente.");
+    return;
+  }
+
+  if (!producto || !Number.isFinite(importe) || importe <= 0) {
+    mensaje("mensajeFiado", "Completá el producto y un precio válido.");
+    return;
+  }
+
+  const { error } = await db.from("fiados").insert({
+    cliente_id: cliente.id,
+    producto: producto,
+    importe: importe,
+    fecha: fechaHoy()
+  });
+
+  if (error) {
+    mensaje("mensajeFiado", error.message);
+    return;
+  }
+
+  $("productoFiado").value = "";
+  $("importeFiado").value = "";
+
+  mensaje("mensajeFiado", "Fiado guardado correctamente.");
+
+  await abrirCliente(cliente);
+}
+
 
 /* FIADO: DEUDA Y PAGOS */
 async function abrirCliente(cliente) {
