@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -234,6 +233,7 @@ h1,h2,h3 { margin-top:0; }
     <button class="nav" data-seccion="gastos" onclick="irA('gastos',this)">− Gastos</button>
     <button class="nav" id="navFiado" data-seccion="fiado" onclick="irA('fiado',this)">▤ Fiado</button>
     <button class="nav" data-seccion="graficos" onclick="irA('graficos',this)">▥ Gráficos</button>
+    <button class="nav oculto" id="navAdmin" data-seccion="admin" onclick="irA('admin',this)">⚙ Administrador</button>
 
     <div style="flex:1"></div>
     <button class="nav" onclick="cambiarTema()">☀️ / 🌙 Cambiar tema</button>
@@ -448,8 +448,29 @@ h1,h2,h3 { margin-top:0; }
       </div>
     </section>
 
+    <!-- ADMINISTRACIÓN -->
+    <section id="seccion-admin" class="oculto">
+      <h1>Administración</h1>
+      <div class="panel">
+        <h2>Negocios registrados</h2>
+        <p class="suave">Consultá las cuentas y bloquealas o reactivalas.</p>
+        <input id="buscarNegocioAdmin" placeholder="Buscar por negocio o correo" oninput="filtrarNegocios()">
+        <button class="secundario" onclick="cargarNegociosAdmin()">Actualizar lista</button>
+        <p id="mensajeAdmin"></p>
+        <div id="listaNegociosAdmin">Cargando...</div>
+      </div>
+    </section>
+
   </main>
 </div>
+
+<section id="cuentaBloqueada" class="panel oculto" style="max-width:520px;margin:60px auto">
+  <h1>Cuenta bloqueada</h1>
+  <p>El acceso a este negocio fue suspendido por el administrador.</p>
+  <p><strong>Motivo:</strong> <span id="motivoBloqueo"></span></p>
+  <p class="suave">Si creés que se trata de un error, comunicate con soporte.</p>
+  <button class="secundario" style="width:100%" onclick="cerrarSesion()">Cerrar sesión</button>
+</section>
 
 <script>
 /* CONFIGURACIÓN SUPABASE */
@@ -462,6 +483,8 @@ let clienteSeleccionado = null;
 let clientesActuales = [];
 let operacionesMes = [];
 let diaSeleccionado = null;
+let esAdministrador = false;
+let negociosAdmin = [];
 
 const $ = id => document.getElementById(id);
 
@@ -500,17 +523,16 @@ function alternarMenu() {
 }
 
 function irA(seccion, boton) {
+  if (seccion === "admin" && !esAdministrador) return;
   document.querySelectorAll("main > section").forEach(s => s.classList.add("oculto"));
   $("seccion-" + seccion).classList.remove("oculto");
-
   document.querySelectorAll(".nav[data-seccion]").forEach(b => b.classList.remove("activo"));
   if (boton) boton.classList.add("activo");
-
   $("menu").classList.remove("abierto");
-
   if (seccion === "fiado") cargarClientes();
   if (seccion === "inicio") cargarResumen();
   if (seccion === "graficos") prepararCalendario();
+  if (seccion === "admin") cargarNegociosAdmin();
 }
 
 /* AUTENTICACIÓN */
@@ -558,30 +580,43 @@ async function cerrarSesion() {
 
 async function comprobarCuenta() {
   const { data: { user }, error: userError } = await db.auth.getUser();
-
   if (userError || !user) {
     mensaje("mensajeAcceso", "No se pudo comprobar la sesión.");
     return;
   }
 
-  $("acceso").classList.add("oculto");
+  const { data: rol, error: errorRol } = await db
+    .from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
+  esAdministrador = !errorRol && rol?.role === "admin";
+  $("navAdmin").classList.toggle("oculto", !esAdministrador);
 
-  const { data, error } = await db
-    .from("negocios")
-    .select("*")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const { data: estado, error: errorEstado } = await db.rpc("mi_estado_negocio");
+  if (!errorEstado && estado) {
+    const info = Array.isArray(estado) ? estado[0] : estado;
+    if (info?.bloqueado) {
+      $("acceso").classList.add("oculto");
+      $("configuracion").classList.add("oculto");
+      $("layout").classList.add("oculto");
+      $("motivoBloqueo").textContent = info.motivo || info.motivo_bloqueo || "No se indicó un motivo.";
+      $("cuentaBloqueada").classList.remove("oculto");
+      return;
+    }
+  } else if (errorEstado) {
+    console.error("No se pudo consultar el estado de la cuenta:", errorEstado.message);
+  }
+
+  $("acceso").classList.add("oculto");
+  const { data, error } = await db.from("negocios").select("*")
+    .eq("user_id", user.id).maybeSingle();
 
   if (error) {
     alert("Error al buscar el negocio: " + error.message);
     return;
   }
-
   if (!data) {
     $("configuracion").classList.remove("oculto");
     return;
   }
-
   negocioActual = data;
   await mostrarAplicacion();
 }
@@ -1228,6 +1263,94 @@ function mostrarDetalleDia(fecha, valor) {
   $("detalleDia").textContent =
     `Resultado del ${partes[2]}/${partes[1]}/${partes[0]}: ${dinero(valor)}`;
   cargarCalendario();
+}
+
+/* ADMINISTRACIÓN */
+async function cargarNegociosAdmin() {
+  if (!esAdministrador) return;
+  mensaje("mensajeAdmin", "Cargando negocios...");
+  $("listaNegociosAdmin").innerHTML = "";
+  const { data, error } = await db.rpc("admin_listar_negocios");
+  if (error) {
+    mensaje("mensajeAdmin", "No se pudo cargar la lista: " + error.message);
+    return;
+  }
+  negociosAdmin = data || [];
+  mensaje("mensajeAdmin", negociosAdmin.length
+    ? "Negocios encontrados: " + negociosAdmin.length
+    : "Todavía no hay negocios registrados.");
+  filtrarNegocios();
+}
+
+function filtrarNegocios() {
+  if (!esAdministrador) return;
+  const termino = ($("buscarNegocioAdmin")?.value || "").trim().toLowerCase();
+  const lista = $("listaNegociosAdmin");
+  lista.innerHTML = "";
+  const encontrados = negociosAdmin.filter(n =>
+    String(n.nombre || "").toLowerCase().includes(termino) ||
+    String(n.correo || "").toLowerCase().includes(termino)
+  );
+  if (!encontrados.length) {
+    lista.textContent = "No hay resultados para esa búsqueda.";
+    return;
+  }
+
+  for (const negocio of encontrados) {
+    const tarjeta = document.createElement("div");
+    tarjeta.className = "cliente";
+    const titulo = document.createElement("h3");
+    titulo.textContent = negocio.nombre || "Negocio sin nombre";
+    const datos = document.createElement("p");
+    datos.textContent = "Correo: " + (negocio.correo || "No disponible") +
+      " · Tipo: " + (negocio.tipo || "No especificado") +
+      " · Suscripción: " + (negocio.estado_suscripcion || "Sin datos");
+    const estado = document.createElement("p");
+    estado.textContent = negocio.bloqueado
+      ? "Estado: BLOQUEADO" + (negocio.motivo_bloqueo ? " · Motivo: " + negocio.motivo_bloqueo : "")
+      : "Estado: Activo";
+    const boton = document.createElement("button");
+    boton.className = negocio.bloqueado ? "accion" : "secundario";
+    boton.textContent = negocio.bloqueado ? "Reactivar cuenta" : "Bloquear cuenta";
+    boton.onclick = () => negocio.bloqueado
+      ? reactivarNegocio(negocio.negocio_id)
+      : bloquearNegocio(negocio.negocio_id, negocio.nombre);
+    tarjeta.append(titulo, datos, estado, boton);
+    lista.appendChild(tarjeta);
+  }
+}
+
+async function bloquearNegocio(id, nombre) {
+  if (!esAdministrador) return;
+  const motivo = prompt("Indicá el motivo para bloquear a " + (nombre || "este negocio") + ":");
+  if (motivo === null) return;
+  if (!motivo.trim()) {
+    alert("Tenés que escribir un motivo.");
+    return;
+  }
+  const { error } = await db.rpc("admin_bloquear_negocio", {
+    negocio_objetivo: id,
+    motivo: motivo.trim()
+  });
+  if (error) {
+    alert("No se pudo bloquear la cuenta: " + error.message);
+    return;
+  }
+  alert("Cuenta bloqueada correctamente.");
+  await cargarNegociosAdmin();
+}
+
+async function reactivarNegocio(id) {
+  if (!esAdministrador || !confirm("¿Querés reactivar esta cuenta?")) return;
+  const { error } = await db.rpc("admin_reactivar_negocio", {
+    negocio_objetivo: id
+  });
+  if (error) {
+    alert("No se pudo reactivar la cuenta: " + error.message);
+    return;
+  }
+  alert("Cuenta reactivada correctamente.");
+  await cargarNegociosAdmin();
 }
 
 /* INICIO */
