@@ -1,0 +1,121 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi calculadora de ganancias</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #eeeeee;
+            display: flex;
+            justify-content: center;
+            padding: 30px;
+        }
+
+        .calculadora {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 380px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        input, button {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px;
+            margin: 8px 0;
+            font-size: 16px;
+        }
+
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        #resultado {
+            margin-top: 20px;
+            line-height: 1.7;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="calculadora">
+
+    <h1>Calculadora de ganancias</h1>
+
+    <label>¿Cuánto ganaste hoy?</label>
+    <input type="number" id="ganancia" step="any" required>
+
+    <label>¿Cuánto gastaste en publicidad?</label>
+    <input type="number" id="perdida" step="any" required>
+
+    <label>¿Cuánto ganaste ayer?</label>
+    <input type="number" id="anterior" step="any" required>
+
+    <button onclick="calcular()">Calcular ganancias</button>
+
+    <div id="resultado"></div>
+
+</div>
+
+<script>
+function calcular() {
+
+    let ganancia = Number(document.getElementById("ganancia").value);
+    let perdida = Number(document.getElementById("perdida").value);
+    let anterior = Number(document.getElementById("anterior").value);
+
+    if (
+        document.getElementById("ganancia").value === "" ||
+        document.getElementById("perdida").value === "" ||
+        document.getElementById("anterior").value === ""
+    ) {
+        alert("Completá todos los campos");
+        return;
+    }
+
+    let ganancia_neta = ganancia - perdida;
+    let diferencia = ganancia_neta - anterior;
+
+    let resultado = "";
+
+    if (anterior !== 0) {
+        let porcentaje = (diferencia / anterior) * 100;
+        resultado += "Cambio: " + porcentaje.toFixed(2) + "%<br>";
+    } else {
+        resultado += "No se puede calcular el porcentaje porque ayer no hubo ganancias.<br>";
+    }
+
+    resultado += "Ganancia neta de hoy: $" + ganancia_neta + "<br>";
+
+    if (ganancia_neta > anterior) {
+        resultado += "Tu ganancia fue mayor que ayer.<br>";
+    } else if (ganancia_neta < anterior) {
+        resultado += "Tu ganancia fue menor que ayer.<br>";
+    } else {
+        resultado += "Tu ganancia fue igual que ayer.<br>";
+    }
+
+    let ganancia_total = ganancia_neta + anterior;
+
+    resultado += "Ganancia total: $" + ganancia_total;
+
+    document.getElementById("resultado").innerHTML = resultado;
+}
+</script>
+
+</body>
+</html>
