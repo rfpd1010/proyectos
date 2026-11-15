@@ -1194,25 +1194,6 @@ async function cargarVistaPublica(token) {
       }
     }
 
-    $("publicoProductos").innerHTML = "";
-    const productos = r.productos || [];
-    if (!productos.length) {
-      $("publicoProductos").textContent = "Todavía no hay productos en la lista de precios.";
-    } else {
-      for (const producto of productos) {
-        const fila = document.createElement("div");
-        fila.className = "registro";
-        const nombre = document.createElement("strong");
-        nombre.textContent = producto.nombre;
-        const precio = document.createElement("span");
-        precio.textContent = dinero(producto.precio_actual);
-        fila.append(nombre, precio);
-        fila.style.display = "flex";
-        fila.style.justifyContent = "space-between";
-        fila.style.gap = "12px";
-        $("publicoProductos").appendChild(fila);
-      }
-    }
   } catch (e) {
     $("publicoNombreNegocio").textContent = "Enlace no válido o revocado";
     $("publicoNombreCliente").textContent = e.message;
