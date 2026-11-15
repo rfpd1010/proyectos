@@ -394,9 +394,18 @@ h1,h2,h3 { margin-top:0; }
     <input id="productoFiado" list="listaProductosFiado" placeholder="Escribí o buscá un producto" onchange="autocompletarPrecioFiado()">
     <datalist id="listaProductosFiado"></datalist>
 
-    <label>Precio</label>
-    <input id="importeFiado" type="number" min="0.01"
-           step="0.01" placeholder="Precio">
+    <div class="fila">
+      <div>
+        <label>Cantidad</label>
+        <input id="cantidadFiado" type="number" min="1" step="1" value="1" placeholder="Cantidad">
+      </div>
+      <div>
+        <label>Precio por unidad</label>
+        <input id="importeFiado" type="number" min="0.01"
+               step="0.01" placeholder="Precio unitario">
+      </div>
+    </div>
+    <p class="suave">El total se calculará multiplicando la cantidad por el precio unitario.</p>
 
     <button class="accion" onclick="guardarFiado()">
       Guardar fiado
@@ -528,22 +537,31 @@ h1,h2,h3 { margin-top:0; }
   <button class="secundario" style="width:100%" onclick="cerrarSesion()">Cerrar sesión</button>
 </section>
 
-<section id="vistaPublicaCliente" class="panel oculto" style="max-width:900px;margin:25px auto;padding:22px">
-  <h1 id="publicoNombreNegocio">Cuenta del cliente</h1>
-  <p id="publicoNombreCliente" class="suave"></p>
-  <div class="panel" style="margin-top:18px;padding:22px">
-    <h2 style="margin-top:0">Mi crédito disponible</h2>
-    <div class="numero positivo" id="publicoCreditoDisponible" style="font-size:2.2rem;margin:18px 0">—</div>
-    <p id="publicoTextoDisponible" class="suave">Disponible para nuevas compras</p>
-    <div style="height:14px;background:var(--borde);border-radius:20px;overflow:hidden;margin:18px 0">
-      <div id="publicoBarraCredito" style="height:100%;width:0;background:var(--positivo);border-radius:20px;transition:width .2s"></div>
+<section id="vistaPublicaCliente" class="panel oculto" style="max-width:900px;margin:25px auto;padding:16px;background:#000;color:#e5e5e5;border:1px solid #262626;border-radius:30px">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <h1 id="publicoNombreNegocio" style="margin:0">Mi cuenta</h1>
+    <strong id="publicoEstadoCuenta" style="color:#16a34a;background:#052e16;padding:8px 14px;border-radius:20px">Al día</strong>
+  </div>
+  <p id="publicoNombreCliente" style="color:#aaa;margin:8px 0 20px"></p>
+  <div style="margin-top:18px;padding:0;background:#000;color:#e5e5e5;border:0">
+    <div style="color:#bbb;font-size:20px">DEUDA TOTAL</div>
+    <div class="numero" id="publicoSaldo" style="font-size:2.7rem;margin:12px 0;color:#e5e5e5">$0</div>
+    <div style="color:#bbb;font-size:18px">Este es el importe que tenés pendiente de pago.</div>
+    <hr style="border:0;border-top:1px solid #262626;margin:36px 0">
+    <div style="display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap">
+      <span style="color:#bbb;font-size:18px">Uso de tu límite de crédito</span>
+      <strong id="publicoPorcentaje" style="font-size:22px">—</strong>
+    </div>
+    <div style="height:18px;background:#252525;border-radius:20px;overflow:hidden;margin:20px 0 14px">
+      <div id="publicoBarraCredito" style="height:100%;width:0;background:#d69e20;border-radius:20px;transition:width .2s"></div>
     </div>
     <div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap">
-      <div><div class="suave">Deuda actual</div><strong class="numero" id="publicoSaldo">$0</strong></div>
-      <div style="text-align:right"><div class="suave">Límite asignado</div><strong class="numero" id="publicoLimite">Sin límite</strong></div>
+      <div><div style="color:#bbb;font-size:17px">Crédito utilizado</div><strong id="publicoUtilizado" style="display:block;font-size:22px;margin-top:8px">$0</strong></div>
+      <div style="text-align:right"><div style="color:#bbb;font-size:17px">Crédito disponible</div><strong class="positivo" id="publicoCreditoDisponible" style="display:block;font-size:22px;margin-top:8px">—</strong></div>
     </div>
-    <hr style="border:0;border-top:1px solid var(--borde);margin:22px 0">
-    <div id="publicoAvisoCredito" class="suave">ⓘ Tu crédito disponible se actualiza cuando el comercio registra tus pagos.</div>
+    <div style="color:#bbb;font-size:17px;margin-top:24px">Límite asignado: <strong id="publicoLimite" style="color:#e5e5e5">Sin límite</strong></div>
+    <p id="publicoTextoDisponible" style="display:none"></p>
+    <div id="publicoAvisoCredito" style="color:#bbb;margin-top:18px"></div>
   </div>
   <div class="panel" style="margin-top:18px">
     <h2 style="margin-top:0">Lista de productos y precios</h2>
@@ -1095,9 +1113,18 @@ async function cargarVistaPublica(token) {
   $("vistaPublicaCliente").classList.remove("oculto");
   try {
     const r = await llamarFuncionCuentas("consultar", { token });
-    $("publicoNombreNegocio").textContent = r.negocio;
-    $("publicoNombreCliente").textContent = "Cuenta de " + r.cliente;
+    $("publicoNombreNegocio").textContent = "Mi cuenta";
+    $("publicoNombreCliente").textContent = "Cuenta de " + r.cliente + " · " + r.negocio;
+    $("publicoEstadoCuenta").textContent = Number(r.saldo) > 0 ? "Con deuda" : "Al día";
+    if (Number(r.saldo) > 0) {
+      $("publicoEstadoCuenta").style.color = "#fbbf24";
+      $("publicoEstadoCuenta").style.background = "#422006";
+    } else {
+      $("publicoEstadoCuenta").style.color = "#16a34a";
+      $("publicoEstadoCuenta").style.background = "#052e16";
+    }
     $("publicoSaldo").textContent = dinero(r.saldo);
+    $("publicoUtilizado").textContent = dinero(r.saldo);
     const limite = r.limite_deuda === null || r.limite_deuda === undefined ? null : Number(r.limite_deuda);
     const saldo = Number(r.saldo) || 0;
     const credito = $("publicoCreditoDisponible");
@@ -1105,19 +1132,28 @@ async function cargarVistaPublica(token) {
     const barra = $("publicoBarraCredito");
     const aviso = $("publicoAvisoCredito");
     if (limite === null || !Number.isFinite(limite) || limite <= 0) {
-      credito.textContent = "Sin límite asignado";
+      credito.textContent = "Sin límite";
       credito.className = "numero";
       limiteTexto.textContent = "Sin límite";
       barra.style.width = "0%";
+      $("publicoPorcentaje").textContent = "—";
       aviso.textContent = "ⓘ El comercio todavía no asignó un límite de crédito a tu cuenta.";
       $("publicoTextoDisponible").textContent = "Crédito disponible para nuevas compras";
     } else {
       const disponible = Math.max(0, limite - saldo);
       const uso = Math.min(100, Math.max(0, (saldo / limite) * 100));
+      $("publicoPorcentaje").textContent = uso.toLocaleString("es-AR", { maximumFractionDigits: 0 }) + "%";
       credito.textContent = dinero(disponible);
       limiteTexto.textContent = dinero(limite);
       barra.style.width = uso + "%";
       barra.style.background = uso >= 90 ? "var(--negativo)" : uso >= 70 ? "#d69e20" : "var(--positivo)";
+      if (saldo <= 0) {
+        $("publicoEstadoCuenta").textContent = "Al día";
+      } else {
+        $("publicoEstadoCuenta").textContent = "Con deuda";
+        $("publicoEstadoCuenta").style.color = "#fbbf24";
+        $("publicoEstadoCuenta").style.background = "#422006";
+      }
       if (saldo >= limite) {
         credito.textContent = dinero(0);
         aviso.textContent = "ⓘ Alcanzaste tu límite de crédito. Podés realizar entregas de dinero para liberar crédito disponible.";
@@ -1386,21 +1422,24 @@ async function guardarFiado() {
   );
 
   const producto = $("productoFiado").value.trim();
-  const importe = Number($("importeFiado").value);
+  const precioUnitario = Number($("importeFiado").value);
+  const cantidad = Number($("cantidadFiado").value);
+  const importe = precioUnitario * cantidad;
 
   if (!cliente) {
     mensaje("mensajeFiado", "Seleccioná un cliente.");
     return;
   }
 
-  if (!producto || !Number.isFinite(importe) || importe <= 0) {
-    mensaje("mensajeFiado", "Completá el producto y un precio válido.");
+  if (!producto || !Number.isFinite(precioUnitario) || precioUnitario <= 0 || !Number.isInteger(cantidad) || cantidad < 1) {
+    mensaje("mensajeFiado", "Completá el producto, una cantidad válida y el precio por unidad.");
     return;
   }
 
   const { error } = await db.from("fiados").insert({
     cliente_id: cliente.id,
     producto: producto,
+    cantidad: cantidad,
     importe: importe,
     fecha: fechaHoy()
   });
@@ -1411,6 +1450,7 @@ async function guardarFiado() {
   }
 
   $("productoFiado").value = "";
+  $("cantidadFiado").value = "1";
   $("importeFiado").value = "";
 
   mensaje("mensajeFiado", "Fiado guardado correctamente.");
@@ -1505,8 +1545,13 @@ async function abrirCliente(cliente) {
 
     const nombre = document.createElement("strong");
     nombre.textContent = f.producto || "Producto";
+    const cantidad = document.createElement("div");
+    cantidad.textContent = "Cantidad: " + (Number(f.cantidad) || 1);
     const precio = document.createElement("div");
-    precio.textContent = "Precio: " + dinero(f.importe);
+    precio.textContent = "Total de la compra: " + dinero(f.importe);
+    const fecha = document.createElement("div");
+    fecha.className = "suave";
+    fecha.textContent = "Fecha: " + (f.fecha || "Sin fecha");
     const pagado = document.createElement("div");
     pagado.className = "positivo";
     pagado.textContent = "Pagado: " + dinero(aplicado);
@@ -1516,7 +1561,7 @@ async function abrirCliente(cliente) {
       ? "Pendiente: " + dinero(pendiente)
       : "Producto saldado";
 
-    tarjeta.append(nombre, precio, pagado, saldo);
+    tarjeta.append(nombre, cantidad, fecha, precio, pagado, saldo);
     $("detalleDeuda").appendChild(tarjeta);
   }
 
@@ -1542,7 +1587,8 @@ async function abrirCliente(cliente) {
     if (mov.clase === "fiado") {
       div.innerHTML =
         `<strong>Fiado: ${escaparHTML(mov.producto)}</strong>
-         <div>${mov.fecha || ""}</div>
+         <div>Cantidad: ${Number(mov.cantidad) || 1}</div>
+         <div>Fecha: ${escaparHTML(mov.fecha || "Sin fecha")}</div>
          <div class="negativo">${dinero(mov.importe)}</div>`;
     } else {
       div.innerHTML =
