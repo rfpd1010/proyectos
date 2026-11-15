@@ -283,6 +283,15 @@ h1,h2,h3 { margin-top:0; }
       </div>
 
       <div class="panel">
+        <h2>Deuda total</h2>
+        <div class="tarjeta" style="margin-bottom:14px">
+          <div class="numero" id="totalDeudaClientes">$0</div>
+        </div>
+        <h3>Deuda por cliente</h3>
+        <div id="listaDeudasClientes">Cargando...</div>
+      </div>
+
+      <div class="panel">
         <h2>Movimientos de hoy</h2>
         <div id="historialHoy">Cargando...</div>
       </div>
@@ -437,7 +446,6 @@ h1,h2,h3 { margin-top:0; }
       <h1>Actualización de precios</h1>
       <div class="panel">
         <p class="suave">Los productos aparecen automáticamente cuando los registrás por primera vez en un fiado. No hace falta crear un catálogo.</p>
-        <p class="tarjeta">Algunos productos tendrán una actualización de precios. Consultá los nuevos valores antes de realizar tu próxima compra.</p>
         <input id="buscarProductoPrecio" placeholder="Buscar producto..." oninput="filtrarProductosPrecio()">
         <div id="listaPrecios">Cargando productos...</div>
       </div>
@@ -520,16 +528,29 @@ h1,h2,h3 { margin-top:0; }
   <button class="secundario" style="width:100%" onclick="cerrarSesion()">Cerrar sesión</button>
 </section>
 
-<section id="vistaPublicaCliente" class="panel oculto" style="max-width:650px;margin:35px auto">
+<section id="vistaPublicaCliente" class="panel oculto" style="max-width:900px;margin:25px auto;padding:22px">
   <h1 id="publicoNombreNegocio">Cuenta del cliente</h1>
   <p id="publicoNombreCliente" class="suave"></p>
-  <div id="publicoAliasPago" class="tarjeta oculto"></div>
-  <div id="publicoResumen"></div>
-  <h2>Productos fiados</h2>
-  <div id="publicoFiados"></div>
-  <h2>Pagos realizados</h2>
-  <div id="publicoPagos"></div>
-  <p class="suave">Esta página es de solo lectura. Para corregir un movimiento, comunicate con el comercio.</p>
+  <div class="panel" style="margin-top:18px;padding:22px">
+    <h2 style="margin-top:0">Mi crédito disponible</h2>
+    <div class="numero positivo" id="publicoCreditoDisponible" style="font-size:2.2rem;margin:18px 0">—</div>
+    <p id="publicoTextoDisponible" class="suave">Disponible para nuevas compras</p>
+    <div style="height:14px;background:var(--borde);border-radius:20px;overflow:hidden;margin:18px 0">
+      <div id="publicoBarraCredito" style="height:100%;width:0;background:var(--positivo);border-radius:20px;transition:width .2s"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div><div class="suave">Deuda actual</div><strong class="numero" id="publicoSaldo">$0</strong></div>
+      <div style="text-align:right"><div class="suave">Límite asignado</div><strong class="numero" id="publicoLimite">Sin límite</strong></div>
+    </div>
+    <hr style="border:0;border-top:1px solid var(--borde);margin:22px 0">
+    <div id="publicoAvisoCredito" class="suave">ⓘ Tu crédito disponible se actualiza cuando el comercio registra tus pagos.</div>
+  </div>
+  <div class="panel" style="margin-top:18px">
+    <h2 style="margin-top:0">Lista de productos y precios</h2>
+    <p class="suave">Algunos productos tendrán una actualización de precios.</p>
+    <div id="publicoProductos"></div>
+  </div>
+  <p class="suave">Esta página es de solo lectura. Para consultar o corregir tu cuenta, comunicate con el comercio.</p>
 </section>
 
 <script>
@@ -880,6 +901,87 @@ async function cargarResumen() {
   const resultado = ventas - gastos;
   $("gananciaNeta").textContent = dinero(resultado);
   $("gananciaNeta").className = "numero " + (resultado >= 0 ? "positivo" : "negativo");
+
+  await cargarResumenDeudas();
+}
+
+/* DEUDAS TOTALES Y RANKING DE CLIENTES */
+async function cargarResumenDeudas() {
+  const totalElemento = $("totalDeudaClientes");
+  const listaElemento = $("listaDeudasClientes");
+  if (!totalElemento || !listaElemento || !negocioActual) return;
+
+  totalElemento.textContent = "Cargando...";
+  listaElemento.textContent = "Cargando...";
+
+  const { data: clientes, error: errorClientes } = await db
+    .from("clientes")
+    .select("id,nombre")
+    .eq("negocio_id", negocioActual.id);
+
+  if (errorClientes) {
+    totalElemento.textContent = "No disponible";
+    listaElemento.textContent = "No se pudieron cargar los clientes: " + errorClientes.message;
+    return;
+  }
+
+  if (!clientes || clientes.length === 0) {
+    totalElemento.textContent = dinero(0);
+    listaElemento.textContent = "Todavía no tenés clientes registrados.";
+    return;
+  }
+
+  const ids = clientes.map(c => c.id);
+  const [fiadosResp, pagosResp] = await Promise.all([
+    db.from("fiados").select("cliente_id,importe").in("cliente_id", ids),
+    db.from("pagos_fiado").select("cliente_id,importe").in("cliente_id", ids)
+  ]);
+
+  if (fiadosResp.error || pagosResp.error) {
+    totalElemento.textContent = "No disponible";
+    listaElemento.textContent = "No se pudieron calcular las deudas: " +
+      (fiadosResp.error || pagosResp.error).message;
+    return;
+  }
+
+  const deudas = new Map(clientes.map(c => [String(c.id), 0]));
+  for (const f of fiadosResp.data || []) {
+    const id = String(f.cliente_id);
+    deudas.set(id, (deudas.get(id) || 0) + Number(f.importe || 0));
+  }
+  for (const pago of pagosResp.data || []) {
+    const id = String(pago.cliente_id);
+    deudas.set(id, (deudas.get(id) || 0) - Number(pago.importe || 0));
+  }
+
+  const ranking = clientes.map(c => ({
+    id: c.id,
+    nombre: c.nombre,
+    deuda: Math.max(0, deudas.get(String(c.id)) || 0)
+  })).filter(c => c.deuda > 0.009)
+    .sort((a, b) => b.deuda - a.deuda || a.nombre.localeCompare(b.nombre, "es"));
+
+  const total = ranking.reduce((s, c) => s + c.deuda, 0);
+  totalElemento.textContent = dinero(total);
+  listaElemento.innerHTML = "";
+
+  if (!ranking.length) {
+    listaElemento.textContent = "Ningún cliente tiene deuda pendiente.";
+    return;
+  }
+
+  for (const cliente of ranking) {
+    const fila = document.createElement("div");
+    fila.className = "registro fila";
+    fila.style.justifyContent = "space-between";
+    const nombre = document.createElement("strong");
+    nombre.textContent = cliente.nombre;
+    const importe = document.createElement("strong");
+    importe.className = "negativo";
+    importe.textContent = dinero(cliente.deuda);
+    fila.append(nombre, importe);
+    listaElemento.appendChild(fila);
+  }
 }
 
 /* CONFIGURACIÓN: ALIAS DE PAGO */
@@ -966,7 +1068,7 @@ async function crearEnlaceCliente() {
   mensaje("mensajeEnlaceCliente", "Generando enlace...");
   try {
     const r = await llamarFuncionCuentas("crear", { cliente_id: clienteSeleccionado.id });
-    const enlace = location.origin + location.pathname + "?cuenta=" + encodeURIComponent(r.token);
+    const enlace = location.origin + location.pathname + "?c=" + encodeURIComponent(r.token);
     $("enlaceClienteGenerado").value = enlace;
     mensaje("mensajeEnlaceCliente", "Enlace creado. Copialo y compartilo con este cliente.");
     try { await navigator.clipboard.writeText(enlace); } catch (_) {}
@@ -995,42 +1097,58 @@ async function cargarVistaPublica(token) {
     const r = await llamarFuncionCuentas("consultar", { token });
     $("publicoNombreNegocio").textContent = r.negocio;
     $("publicoNombreCliente").textContent = "Cuenta de " + r.cliente;
-    if (r.alias_pago) {
-      $("publicoAliasPago").classList.remove("oculto");
-      $("publicoAliasPago").textContent = "Alias para transferencias: " + r.alias_pago;
-      const copiar = document.createElement("button");
-      copiar.className = "secundario";
-      copiar.textContent = "Copiar alias";
-      copiar.onclick = async () => {
-        try { await navigator.clipboard.writeText(r.alias_pago); copiar.textContent = "Alias copiado"; }
-        catch (_) { copiar.textContent = "No se pudo copiar"; }
-      };
-      $("publicoAliasPago").appendChild(copiar);
+    $("publicoSaldo").textContent = dinero(r.saldo);
+    const limite = r.limite_deuda === null || r.limite_deuda === undefined ? null : Number(r.limite_deuda);
+    const saldo = Number(r.saldo) || 0;
+    const credito = $("publicoCreditoDisponible");
+    const limiteTexto = $("publicoLimite");
+    const barra = $("publicoBarraCredito");
+    const aviso = $("publicoAvisoCredito");
+    if (limite === null || !Number.isFinite(limite) || limite <= 0) {
+      credito.textContent = "Sin límite asignado";
+      credito.className = "numero";
+      limiteTexto.textContent = "Sin límite";
+      barra.style.width = "0%";
+      aviso.textContent = "ⓘ El comercio todavía no asignó un límite de crédito a tu cuenta.";
+      $("publicoTextoDisponible").textContent = "Crédito disponible para nuevas compras";
+    } else {
+      const disponible = Math.max(0, limite - saldo);
+      const uso = Math.min(100, Math.max(0, (saldo / limite) * 100));
+      credito.textContent = dinero(disponible);
+      limiteTexto.textContent = dinero(limite);
+      barra.style.width = uso + "%";
+      barra.style.background = uso >= 90 ? "var(--negativo)" : uso >= 70 ? "#d69e20" : "var(--positivo)";
+      if (saldo >= limite) {
+        credito.textContent = dinero(0);
+        aviso.textContent = "ⓘ Alcanzaste tu límite de crédito. Podés realizar entregas de dinero para liberar crédito disponible.";
+      } else if (uso > 90) {
+        aviso.textContent = "ⓘ Estás cerca de alcanzar tu límite de crédito.";
+      } else if (uso >= 70) {
+        aviso.textContent = "ⓘ ¡Atención! Te queda poco crédito disponible.";
+      } else {
+        aviso.textContent = "ⓘ Estás utilizando el " + uso.toLocaleString("es-AR", { maximumFractionDigits: 1 }) + "% de tu límite de crédito.";
+      }
+      $("publicoTextoDisponible").textContent = "Disponible para nuevas compras";
     }
-    $("publicoResumen").textContent =
-      "Total fiado: " + dinero(r.total_fiado) + " · Pagado: " +
-      dinero(r.total_pagado) + " · Saldo pendiente: " + dinero(r.saldo);
-    if (r.limite_deuda !== null && r.limite_deuda !== undefined) {
-      const porcentaje = r.limite_deuda > 0 ? r.saldo / r.limite_deuda : (r.saldo > 0 ? 1 : 0);
-      const aviso = document.createElement("p");
-      aviso.className = "tarjeta";
-      aviso.textContent = porcentaje >= 1 ? "⚠️ Alcanzaste tu límite de deuda." :
-        porcentaje >= 0.8 ? "⚠️ Estás cerca de alcanzar tu límite de deuda." :
-        "Límite de deuda: " + dinero(r.limite_deuda);
-      $("publicoResumen").appendChild(aviso);
-    }
-    $("publicoFiados").innerHTML = "";
-    for (const f of r.fiados || []) {
-      const d = document.createElement("div"); d.className = "registro";
-      d.textContent = f.producto + " · " + f.fecha + " · " + dinero(f.importe) +
-        " · Pendiente: " + dinero(f.pendiente);
-      $("publicoFiados").appendChild(d);
-    }
-    $("publicoPagos").innerHTML = "";
-    for (const p of r.pagos || []) {
-      const d = document.createElement("div"); d.className = "registro";
-      d.textContent = (p.fecha || "") + " · " + dinero(p.importe) + " · " + (p.descripcion || "Pago");
-      $("publicoPagos").appendChild(d);
+
+    $("publicoProductos").innerHTML = "";
+    const productos = r.productos || [];
+    if (!productos.length) {
+      $("publicoProductos").textContent = "Todavía no hay productos en la lista de precios.";
+    } else {
+      for (const producto of productos) {
+        const fila = document.createElement("div");
+        fila.className = "registro";
+        const nombre = document.createElement("strong");
+        nombre.textContent = producto.nombre;
+        const precio = document.createElement("span");
+        precio.textContent = dinero(producto.precio_actual);
+        fila.append(nombre, precio);
+        fila.style.display = "flex";
+        fila.style.justifyContent = "space-between";
+        fila.style.gap = "12px";
+        $("publicoProductos").appendChild(fila);
+      }
     }
   } catch (e) {
     $("publicoNombreNegocio").textContent = "Enlace no válido o revocado";
@@ -1710,7 +1828,8 @@ async function reactivarNegocio(id) {
 /* INICIO */
 async function iniciarAplicacion() {
   temaInicial();
-  const tokenPublico = new URLSearchParams(location.search).get("cuenta");
+  const parametrosPublicos = new URLSearchParams(location.search);
+  const tokenPublico = parametrosPublicos.get("c") || parametrosPublicos.get("cuenta");
   if (tokenPublico) {
     await cargarVistaPublica(tokenPublico);
     return;
