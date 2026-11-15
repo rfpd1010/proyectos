@@ -232,6 +232,7 @@ h1,h2,h3 { margin-top:0; }
     <button class="nav" data-seccion="ventas" onclick="irA('ventas',this)">＋ Ventas</button>
     <button class="nav" data-seccion="gastos" onclick="irA('gastos',this)">− Gastos</button>
     <button class="nav" id="navFiado" data-seccion="fiado" onclick="irA('fiado',this)">▤ Fiado</button>
+    <button class="nav" data-seccion="precios" onclick="irA('precios',this)">🏷️ Precios</button>
     <button class="nav" data-seccion="graficos" onclick="irA('graficos',this)">▥ Gráficos</button>
     <button class="nav oculto" id="navAdmin" data-seccion="admin" onclick="irA('admin',this)">⚙ Administrador</button>
 
@@ -253,6 +254,14 @@ h1,h2,h3 { margin-top:0; }
     <section id="seccion-inicio">
       <h1 id="tituloNegocio">Mi negocio</h1>
       <p id="estadoPrueba" class="suave"></p>
+
+      <div class="panel">
+        <h2>Configuración del negocio</h2>
+        <label>Alias de pago</label>
+        <input id="aliasPagoNegocio" placeholder="Ej. mi.alias.mp">
+        <button class="accion" onclick="guardarAliasPago()">Guardar alias</button>
+        <p id="mensajeAlias"></p>
+      </div>
 
       <div class="panel">
         <h2>Resumen de hoy</h2>
@@ -373,7 +382,8 @@ h1,h2,h3 { margin-top:0; }
     </p>
 
     <label>Producto</label>
-    <input id="productoFiado" placeholder="Nombre del producto">
+    <input id="productoFiado" list="listaProductosFiado" placeholder="Escribí o buscá un producto" onchange="autocompletarPrecioFiado()">
+    <datalist id="listaProductosFiado"></datalist>
 
     <label>Precio</label>
     <input id="importeFiado" type="number" min="0.01"
@@ -389,6 +399,20 @@ h1,h2,h3 { margin-top:0; }
   <div id="detalleCliente" class="panel oculto">
     <h2 id="tituloCliente"></h2>
     <div id="detalleDeuda"></div>
+
+    <h3>Límite de deuda del cliente</h3>
+    <label>Límite (dejalo vacío para no establecer límite)</label>
+    <input id="limiteDeudaCliente" type="number" min="0" step="0.01" placeholder="Sin límite">
+    <button class="secundario" onclick="guardarLimiteDeuda()">Guardar límite</button>
+    <p id="mensajeLimiteDeuda"></p>
+    <div id="avisoLimiteDeuda"></div>
+
+    <h3>Enlace privado para este cliente</h3>
+    <p class="suave">El cliente podrá consultar su saldo, fiados y pagos desde el enlace, sin iniciar sesión. Podés revocarlo cuando quieras.</p>
+    <button class="secundario" onclick="crearEnlaceCliente()">Crear / regenerar enlace</button>
+    <button class="secundario" onclick="revocarEnlaceCliente()">Revocar enlace</button>
+    <p id="mensajeEnlaceCliente"></p>
+    <input id="enlaceClienteGenerado" readonly placeholder="Todavía no hay un enlace generado">
 
     <h3>Registrar pago</h3>
     <label>Importe que pagó</label>
@@ -407,6 +431,30 @@ h1,h2,h3 { margin-top:0; }
     <div id="historialCliente"></div>
   </div>
 </section>
+
+    <!-- PRECIOS -->
+    <section id="seccion-precios" class="oculto">
+      <h1>Actualización de precios</h1>
+      <div class="panel">
+        <p class="suave">Los productos aparecen automáticamente cuando los registrás por primera vez en un fiado. No hace falta crear un catálogo.</p>
+        <p class="tarjeta">Algunos productos tendrán una actualización de precios. Consultá los nuevos valores antes de realizar tu próxima compra.</p>
+        <input id="buscarProductoPrecio" placeholder="Buscar producto..." oninput="filtrarProductosPrecio()">
+        <div id="listaPrecios">Cargando productos...</div>
+      </div>
+      <div class="panel oculto" id="editarPrecioPanel">
+        <h2 id="tituloEditarPrecio">Cambiar precio</h2>
+        <p id="precioAnteriorTexto" class="suave"></p>
+        <label>Nuevo precio</label>
+        <input id="nuevoPrecioProducto" type="number" min="0.01" step="0.01" placeholder="Nuevo precio">
+        <h3>Aplicar también a cuentas existentes</h3>
+        <p class="suave">Elegí los clientes a los que querés actualizarles los fiados que todavía no tuvieron ningún pago. Los fiados con pagos parciales o completos no se modifican.</p>
+        <input id="buscarClientePrecio" placeholder="Buscar cliente..." oninput="filtrarClientesPrecio()">
+        <div id="clientesAplicarPrecio"></div>
+        <button class="accion" onclick="guardarNuevoPrecio()">Guardar actualización</button>
+        <button class="secundario" onclick="cancelarEdicionPrecio()">Cancelar</button>
+        <p id="mensajePrecio"></p>
+      </div>
+    </section>
 
     <!-- GRÁFICOS -->
     <section id="seccion-graficos" class="oculto">
@@ -472,6 +520,18 @@ h1,h2,h3 { margin-top:0; }
   <button class="secundario" style="width:100%" onclick="cerrarSesion()">Cerrar sesión</button>
 </section>
 
+<section id="vistaPublicaCliente" class="panel oculto" style="max-width:650px;margin:35px auto">
+  <h1 id="publicoNombreNegocio">Cuenta del cliente</h1>
+  <p id="publicoNombreCliente" class="suave"></p>
+  <div id="publicoAliasPago" class="tarjeta oculto"></div>
+  <div id="publicoResumen"></div>
+  <h2>Productos fiados</h2>
+  <div id="publicoFiados"></div>
+  <h2>Pagos realizados</h2>
+  <div id="publicoPagos"></div>
+  <p class="suave">Esta página es de solo lectura. Para corregir un movimiento, comunicate con el comercio.</p>
+</section>
+
 <script>
 /* CONFIGURACIÓN SUPABASE */
 const SUPABASE_URL = "https://pznculgjwextsrgyxufg.supabase.co";
@@ -485,6 +545,10 @@ let operacionesMes = [];
 let diaSeleccionado = null;
 let esAdministrador = false;
 let negociosAdmin = [];
+let productosPrecioActuales = [];
+let productoPrecioSeleccionado = null;
+let clientesParaPrecio = [];
+const URL_FUNCION_CUENTAS = SUPABASE_URL + "/functions/v1/cuentas-clientes";
 
 const $ = id => document.getElementById(id);
 
@@ -529,7 +593,11 @@ function irA(seccion, boton) {
   document.querySelectorAll(".nav[data-seccion]").forEach(b => b.classList.remove("activo"));
   if (boton) boton.classList.add("activo");
   $("menu").classList.remove("abierto");
-  if (seccion === "fiado") cargarClientes();
+  if (seccion === "fiado") {
+    cargarClientes();
+    cargarProductosFiado();
+  }
+  if (seccion === "precios") cargarPreciosProductos();
   if (seccion === "inicio") cargarResumen();
   if (seccion === "graficos") prepararCalendario();
   if (seccion === "admin") cargarNegociosAdmin();
@@ -667,6 +735,7 @@ async function mostrarAplicacion() {
     $("navFiado").classList.remove("oculto");
   }
 
+  $("aliasPagoNegocio").value = negocioActual.alias_pago || "";
   await cargarPrueba();
   await cargarResumen();
 }
@@ -811,6 +880,249 @@ async function cargarResumen() {
   const resultado = ventas - gastos;
   $("gananciaNeta").textContent = dinero(resultado);
   $("gananciaNeta").className = "numero " + (resultado >= 0 ? "positivo" : "negativo");
+}
+
+/* CONFIGURACIÓN: ALIAS DE PAGO */
+async function guardarAliasPago() {
+  const alias = $("aliasPagoNegocio").value.trim();
+  const { error } = await db.from("negocios")
+    .update({ alias_pago: alias || null })
+    .eq("id", negocioActual.id);
+  if (error) {
+    mensaje("mensajeAlias", "No se pudo guardar el alias: " + error.message);
+    return;
+  }
+  negocioActual.alias_pago = alias || null;
+  mensaje("mensajeAlias", "Alias guardado correctamente.");
+}
+
+/* PRODUCTOS: SUGERENCIAS AUTOMÁTICAS */
+async function cargarProductosFiado() {
+  const lista = $("listaProductosFiado");
+  if (!lista || !negocioActual) return;
+  const { data, error } = await db.from("precios_productos")
+    .select("nombre,precio_actual").eq("negocio_id", negocioActual.id).order("nombre");
+  if (error) {
+    console.warn("No se pudieron cargar sugerencias:", error.message);
+    lista.innerHTML = "";
+    return;
+  }
+  lista.innerHTML = "";
+  productosPrecioActuales = data || [];
+  for (const producto of productosPrecioActuales) {
+    const opcion = document.createElement("option");
+    opcion.value = producto.nombre;
+    lista.appendChild(opcion);
+  }
+}
+
+function autocompletarPrecioFiado() {
+  const nombre = $("productoFiado").value.trim().toLowerCase();
+  const encontrado = productosPrecioActuales.find(
+    p => p.nombre.trim().toLowerCase() === nombre
+  );
+  if (encontrado) $("importeFiado").value = encontrado.precio_actual;
+}
+
+/* LÍMITE INDIVIDUAL DE DEUDA */
+async function guardarLimiteDeuda() {
+  if (!clienteSeleccionado) return;
+  const texto = $("limiteDeudaCliente").value.trim();
+  const limite = texto === "" ? null : Number(texto);
+  if (limite !== null && (!Number.isFinite(limite) || limite < 0)) {
+    mensaje("mensajeLimiteDeuda", "Ingresá un límite válido o dejalo vacío.");
+    return;
+  }
+  const { error } = await db.from("clientes")
+    .update({ limite_deuda: limite }).eq("id", clienteSeleccionado.id);
+  if (error) {
+    mensaje("mensajeLimiteDeuda", "No se pudo guardar: " + error.message);
+    return;
+  }
+  clienteSeleccionado.limite_deuda = limite;
+  mensaje("mensajeLimiteDeuda", limite === null ? "Límite eliminado." : "Límite guardado.");
+  await abrirCliente(clienteSeleccionado);
+}
+
+/* ENLACES PÚBLICOS INDIVIDUALES */
+async function llamarFuncionCuentas(accion, extra = {}) {
+  const { data: { session } } = await db.auth.getSession();
+  const respuesta = await fetch(URL_FUNCION_CUENTAS, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + (session?.access_token || ""),
+      "apikey": SUPABASE_KEY
+    },
+    body: JSON.stringify({ accion, ...extra })
+  });
+  const resultado = await respuesta.json().catch(() => ({}));
+  if (!respuesta.ok) throw new Error(resultado.error || "No se pudo completar la operación.");
+  return resultado;
+}
+
+async function crearEnlaceCliente() {
+  if (!clienteSeleccionado) return;
+  mensaje("mensajeEnlaceCliente", "Generando enlace...");
+  try {
+    const r = await llamarFuncionCuentas("crear", { cliente_id: clienteSeleccionado.id });
+    const enlace = location.origin + location.pathname + "?cuenta=" + encodeURIComponent(r.token);
+    $("enlaceClienteGenerado").value = enlace;
+    mensaje("mensajeEnlaceCliente", "Enlace creado. Copialo y compartilo con este cliente.");
+    try { await navigator.clipboard.writeText(enlace); } catch (_) {}
+  } catch (e) {
+    mensaje("mensajeEnlaceCliente", "Error: " + e.message);
+  }
+}
+
+async function revocarEnlaceCliente() {
+  if (!clienteSeleccionado || !confirm("¿Querés revocar el enlace de este cliente? Dejará de funcionar.")) return;
+  try {
+    await llamarFuncionCuentas("revocar", { cliente_id: clienteSeleccionado.id });
+    $("enlaceClienteGenerado").value = "";
+    mensaje("mensajeEnlaceCliente", "Enlace revocado.");
+  } catch (e) {
+    mensaje("mensajeEnlaceCliente", "Error: " + e.message);
+  }
+}
+
+async function cargarVistaPublica(token) {
+  $("acceso").classList.add("oculto");
+  $("configuracion").classList.add("oculto");
+  $("layout").classList.add("oculto");
+  $("vistaPublicaCliente").classList.remove("oculto");
+  try {
+    const r = await llamarFuncionCuentas("consultar", { token });
+    $("publicoNombreNegocio").textContent = r.negocio;
+    $("publicoNombreCliente").textContent = "Cuenta de " + r.cliente;
+    if (r.alias_pago) {
+      $("publicoAliasPago").classList.remove("oculto");
+      $("publicoAliasPago").textContent = "Alias para transferencias: " + r.alias_pago;
+      const copiar = document.createElement("button");
+      copiar.className = "secundario";
+      copiar.textContent = "Copiar alias";
+      copiar.onclick = async () => {
+        try { await navigator.clipboard.writeText(r.alias_pago); copiar.textContent = "Alias copiado"; }
+        catch (_) { copiar.textContent = "No se pudo copiar"; }
+      };
+      $("publicoAliasPago").appendChild(copiar);
+    }
+    $("publicoResumen").textContent =
+      "Total fiado: " + dinero(r.total_fiado) + " · Pagado: " +
+      dinero(r.total_pagado) + " · Saldo pendiente: " + dinero(r.saldo);
+    if (r.limite_deuda !== null && r.limite_deuda !== undefined) {
+      const porcentaje = r.limite_deuda > 0 ? r.saldo / r.limite_deuda : (r.saldo > 0 ? 1 : 0);
+      const aviso = document.createElement("p");
+      aviso.className = "tarjeta";
+      aviso.textContent = porcentaje >= 1 ? "⚠️ Alcanzaste tu límite de deuda." :
+        porcentaje >= 0.8 ? "⚠️ Estás cerca de alcanzar tu límite de deuda." :
+        "Límite de deuda: " + dinero(r.limite_deuda);
+      $("publicoResumen").appendChild(aviso);
+    }
+    $("publicoFiados").innerHTML = "";
+    for (const f of r.fiados || []) {
+      const d = document.createElement("div"); d.className = "registro";
+      d.textContent = f.producto + " · " + f.fecha + " · " + dinero(f.importe) +
+        " · Pendiente: " + dinero(f.pendiente);
+      $("publicoFiados").appendChild(d);
+    }
+    $("publicoPagos").innerHTML = "";
+    for (const p of r.pagos || []) {
+      const d = document.createElement("div"); d.className = "registro";
+      d.textContent = (p.fecha || "") + " · " + dinero(p.importe) + " · " + (p.descripcion || "Pago");
+      $("publicoPagos").appendChild(d);
+    }
+  } catch (e) {
+    $("publicoNombreNegocio").textContent = "Enlace no válido o revocado";
+    $("publicoNombreCliente").textContent = e.message;
+  }
+}
+
+/* ADMINISTRACIÓN DE PRECIOS */
+async function cargarPreciosProductos() {
+  if (!clientesActuales.length) await cargarClientes();
+  $("listaPrecios").textContent = "Cargando productos...";
+  const { data, error } = await db.from("precios_productos")
+    .select("id,nombre,precio_actual").eq("negocio_id", negocioActual.id).order("nombre");
+  if (error) {
+    $("listaPrecios").textContent = "No se pudieron cargar los precios: " + error.message;
+    return;
+  }
+  productosPrecioActuales = data || [];
+  filtrarProductosPrecio();
+}
+
+function filtrarProductosPrecio() {
+  const termino = ($("buscarProductoPrecio").value || "").trim().toLowerCase();
+  const lista = $("listaPrecios"); lista.innerHTML = "";
+  const encontrados = productosPrecioActuales.filter(p => p.nombre.toLowerCase().includes(termino));
+  if (!encontrados.length) { lista.textContent = "Todavía no hay productos guardados en fiados."; return; }
+  for (const p of encontrados) {
+    const fila = document.createElement("div"); fila.className = "registro";
+    const info = document.createElement("div");
+    info.textContent = p.nombre + " · Precio actual: " + dinero(p.precio_actual);
+    const boton = document.createElement("button"); boton.className = "secundario";
+    boton.textContent = "Cambiar precio"; boton.onclick = () => seleccionarProductoPrecio(p);
+    fila.append(info, boton); lista.appendChild(fila);
+  }
+}
+
+function seleccionarProductoPrecio(producto) {
+  productoPrecioSeleccionado = producto;
+  clientesParaPrecio = [];
+  $("editarPrecioPanel").classList.remove("oculto");
+  $("tituloEditarPrecio").textContent = "Cambiar precio de " + producto.nombre;
+  $("precioAnteriorTexto").textContent = "Precio anterior: " + dinero(producto.precio_actual);
+  $("nuevoPrecioProducto").value = producto.precio_actual;
+  $("buscarClientePrecio").value = "";
+  filtrarClientesPrecio();
+  $("mensajePrecio").textContent = "";
+  $("editarPrecioPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function filtrarClientesPrecio() {
+  const termino = ($("buscarClientePrecio").value || "").trim().toLowerCase();
+  const lista = $("clientesAplicarPrecio"); lista.innerHTML = "";
+  const encontrados = clientesActuales.filter(c => c.nombre.toLowerCase().includes(termino));
+  for (const c of encontrados) {
+    const etiqueta = document.createElement("label");
+    etiqueta.style.display = "block"; etiqueta.style.padding = "7px 0";
+    const check = document.createElement("input");
+    check.type = "checkbox"; check.style.width = "auto"; check.style.marginRight = "8px";
+    check.checked = clientesParaPrecio.includes(Number(c.id));
+    check.onchange = () => {
+      const id = Number(c.id);
+      if (check.checked && !clientesParaPrecio.includes(id)) clientesParaPrecio.push(id);
+      if (!check.checked) clientesParaPrecio = clientesParaPrecio.filter(x => x !== id);
+    };
+    etiqueta.append(check, document.createTextNode(c.nombre)); lista.appendChild(etiqueta);
+  }
+  if (!encontrados.length) lista.textContent = "No hay clientes que coincidan.";
+}
+
+function cancelarEdicionPrecio() {
+  $("editarPrecioPanel").classList.add("oculto");
+  productoPrecioSeleccionado = null;
+  clientesParaPrecio = [];
+}
+
+async function guardarNuevoPrecio() {
+  if (!productoPrecioSeleccionado) return;
+  const precio = Number($("nuevoPrecioProducto").value);
+  if (!Number.isFinite(precio) || precio <= 0) {
+    mensaje("mensajePrecio", "Ingresá un precio mayor que cero."); return;
+  }
+  if (!confirm("Se actualizará el precio de referencia y solo los fiados totalmente impagos de los clientes seleccionados. ¿Continuar?")) return;
+  mensaje("mensajePrecio", "Actualizando...");
+  const { data, error } = await db.rpc("actualizar_precio_selectivo", {
+    p_producto_id: productoPrecioSeleccionado.id,
+    p_nuevo_precio: precio,
+    p_clientes: clientesParaPrecio
+  });
+  if (error) { mensaje("mensajePrecio", "No se pudo actualizar: " + error.message); return; }
+  mensaje("mensajePrecio", "Precio actualizado. Fiados modificados: " + (data?.fiados_actualizados ?? 0));
+  await cargarPreciosProductos();
+  cancelarEdicionPrecio();
 }
 
 /* FIADO: CLIENTES */
@@ -995,6 +1307,10 @@ async function abrirCliente(cliente) {
   $("detalleCliente").classList.remove("oculto");
   $("tituloCliente").textContent = cliente.nombre;
   $("mensajePago").textContent = "";
+  $("mensajeLimiteDeuda").textContent = "";
+  $("mensajeEnlaceCliente").textContent = "";
+  $("enlaceClienteGenerado").value = "";
+  $("limiteDeudaCliente").value = cliente.limite_deuda ?? "";
 
   const [fiadosResp, pagosResp, aplicacionesResp] = await Promise.all([
     db.from("fiados").select("*").eq("cliente_id", cliente.id).order("fecha", {ascending:true}).order("id", {ascending:true}),
@@ -1029,6 +1345,19 @@ async function abrirCliente(cliente) {
   }, 0);
 
   $("detalleDeuda").innerHTML = "";
+  $("avisoLimiteDeuda").innerHTML = "";
+  if (cliente.limite_deuda !== null && cliente.limite_deuda !== undefined) {
+    const limite = Number(cliente.limite_deuda);
+    const porcentaje = limite > 0 ? deuda / limite : (deuda > 0 ? 1 : 0);
+    const aviso = document.createElement("p");
+    aviso.className = "tarjeta";
+    aviso.textContent = porcentaje >= 1
+      ? "⚠️ El cliente alcanzó o superó su límite de deuda (" + dinero(limite) + ")."
+      : porcentaje >= 0.8
+        ? "⚠️ El cliente está cerca de su límite de deuda (" + dinero(limite) + ")."
+        : "Límite de deuda: " + dinero(limite);
+    $("avisoLimiteDeuda").appendChild(aviso);
+  }
 
   const resumen = document.createElement("div");
   resumen.className = "tarjeta";
@@ -1381,7 +1710,11 @@ async function reactivarNegocio(id) {
 /* INICIO */
 async function iniciarAplicacion() {
   temaInicial();
-
+  const tokenPublico = new URLSearchParams(location.search).get("cuenta");
+  if (tokenPublico) {
+    await cargarVistaPublica(tokenPublico);
+    return;
+  }
   const { data: { session } } = await db.auth.getSession();
   if (session) await comprobarCuenta();
 }
