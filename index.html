@@ -567,7 +567,7 @@ h1,h2,h3 { margin-top:0; }
     <div id="publicoAvisoCredito" style="color:#bbb;margin-top:18px"></div>
   </div>
   <div class="panel" style="margin-top:18px">
-    <h2 style="margin-top:0">Tus compras fiadas</h2>
+    <h2 style="margin-top:0">Compras</h2>
     <p class="suave">Cada compra aparece por separado, aunque sea del mismo producto.</p>
     <div id="publicoCompras">Cargando compras...</div>
   </div>
@@ -1181,9 +1181,11 @@ async function cargarVistaPublica(token) {
     // Mostrar cada fiado como una compra independiente.
     const contenedorCompras = $("publicoCompras");
     contenedorCompras.innerHTML = "";
-    const compras = r.compras || [];
+    // Mostrar solamente compras que todavía tengan deuda.
+    // Cuando una compra se paga por completo, desaparece de esta lista.
+    const compras = (r.compras || []).filter(compra => Number(compra.pendiente) > 0);
     if (!compras.length) {
-      contenedorCompras.textContent = "Todavía no tenés compras fiadas.";
+      contenedorCompras.textContent = "No tenés compras pendientes.";
     } else {
       for (const compra of compras) {
         const tarjeta = document.createElement("div");
@@ -1193,12 +1195,12 @@ async function cargarVistaPublica(token) {
         const nombre = document.createElement("strong");
         nombre.textContent = compra.producto || "Producto";
         const cantidad = document.createElement("div");
-        cantidad.textContent = "Cantidad comprada: " + (Number(compra.cantidad) || 1);
+        cantidad.textContent = "Cantidad: " + (Number(compra.cantidad) || 1);
         const fecha = document.createElement("div");
         fecha.className = "suave";
         fecha.textContent = "Fecha: " + (compra.fecha || "Sin fecha");
         const total = document.createElement("div");
-        total.textContent = "Total de la compra: " + dinero(compra.importe);
+        total.textContent = "Total: " + dinero(compra.importe);
         // En la vista del cliente no mostramos el saldo pendiente de cada compra.
         tarjeta.append(nombre, cantidad, fecha, total);
         contenedorCompras.appendChild(tarjeta);
