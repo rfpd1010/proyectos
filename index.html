@@ -996,23 +996,37 @@ async function abrirCliente(cliente) {
   $("tituloCliente").textContent = cliente.nombre;
   $("mensajePago").textContent = "";
 
-  const [fiadosResp, pagosResp] = await Promise.all([
-    db.from("fiados").select("*").eq("cliente_id", cliente.id).order("created_at", {ascending:false}),
-    db.from("pagos_fiado").select("*").eq("cliente_id", cliente.id).order("created_at", {ascending:false})
+  const [fiadosResp, pagosResp, aplicacionesResp] = await Promise.all([
+    db.from("fiados").select("*").eq("cliente_id", cliente.id).order("fecha", {ascending:true}).order("id", {ascending:true}),
+    db.from("pagos_fiado").select("*").eq("cliente_id", cliente.id).order("created_at", {ascending:false}),
+    db.from("aplicaciones_pagos_fiado").select("fiado_id,importe").eq("cliente_id", cliente.id)
   ]);
 
-  if (fiadosResp.error || pagosResp.error) {
+  if (fiadosResp.error || pagosResp.error || aplicacionesResp.error) {
     $("detalleDeuda").textContent =
-      (fiadosResp.error || pagosResp.error).message;
+      (fiadosResp.error || pagosResp.error || aplicacionesResp.error).message;
     return;
   }
 
   const fiados = fiadosResp.data || [];
   const pagos = pagosResp.data || [];
+  const aplicaciones = aplicacionesResp.data || [];
+  const pagadoPorFiado = new Map();
+
+  for (const aplicacion of aplicaciones) {
+    const anterior = pagadoPorFiado.get(String(aplicacion.fiado_id)) || 0;
+    pagadoPorFiado.set(
+      String(aplicacion.fiado_id),
+      anterior + Number(aplicacion.importe)
+    );
+  }
 
   const totalFiado = fiados.reduce((s, f) => s + Number(f.importe), 0);
   const totalPagado = pagos.reduce((s, p) => s + Number(p.importe), 0);
-  const deuda = totalFiado - totalPagado;
+  const deuda = fiados.reduce((s, f) => {
+    const aplicado = pagadoPorFiado.get(String(f.id)) || 0;
+    return s + Math.max(0, Number(f.importe) - aplicado);
+  }, 0);
 
   $("detalleDeuda").innerHTML = "";
 
@@ -1023,6 +1037,41 @@ async function abrirCliente(cliente) {
      <div>Total pagado: <strong class="positivo">${dinero(totalPagado)}</strong></div>
      <div>Saldo pendiente: <strong class="${deuda > 0 ? "negativo" : "positivo"}">${dinero(deuda)}</strong></div>`;
   $("detalleDeuda").appendChild(resumen);
+
+  const subtitulo = document.createElement("h3");
+  subtitulo.textContent = "Estado de cada producto";
+  $("detalleDeuda").appendChild(subtitulo);
+
+  if (!fiados.length) {
+    const vacio = document.createElement("p");
+    vacio.className = "suave";
+    vacio.textContent = "Este cliente todavía no tiene productos fiados.";
+    $("detalleDeuda").appendChild(vacio);
+  }
+
+  for (const f of fiados) {
+    const aplicado = pagadoPorFiado.get(String(f.id)) || 0;
+    const pendiente = Math.max(0, Number(f.importe) - aplicado);
+    const tarjeta = document.createElement("div");
+    tarjeta.className = "tarjeta";
+    tarjeta.style.marginTop = "8px";
+
+    const nombre = document.createElement("strong");
+    nombre.textContent = f.producto || "Producto";
+    const precio = document.createElement("div");
+    precio.textContent = "Precio: " + dinero(f.importe);
+    const pagado = document.createElement("div");
+    pagado.className = "positivo";
+    pagado.textContent = "Pagado: " + dinero(aplicado);
+    const saldo = document.createElement("div");
+    saldo.className = pendiente > 0 ? "negativo" : "positivo";
+    saldo.textContent = pendiente > 0
+      ? "Pendiente: " + dinero(pendiente)
+      : "Producto saldado";
+
+    tarjeta.append(nombre, precio, pagado, saldo);
+    $("detalleDeuda").appendChild(tarjeta);
+  }
 
   $("importePago").value = "";
   $("importePago").max = Math.max(0, deuda);
@@ -1077,67 +1126,31 @@ async function guardarPago() {
     return;
   }
 
-  const { data: fiados, error: errorFiados } = await db
-    .from("fiados")
-    .select("importe")
-    .eq("cliente_id", clienteSeleccionado.id);
+  const boton = document.querySelector('#detalleCliente button[onclick="guardarPago()"]');
+  if (boton) boton.disabled = true;
+  mensaje("mensajePago", "Registrando pago...");
 
-  if (errorFiados) {
-    mensaje("mensajePago", errorFiados.message);
-    return;
-  }
+  try {
+    const { data, error } = await db.rpc("registrar_pago_fiado", {
+      p_cliente_id: clienteSeleccionado.id,
+      p_importe: importe,
+      p_descripcion: descripcion || null
+    });
 
-  const { data: pagos, error: errorPagos } = await db
-    .from("pagos_fiado")
-    .select("importe")
-    .eq("cliente_id", clienteSeleccionado.id);
+    if (error) {
+      mensaje("mensajePago", "No se pudo registrar el pago: " + error.message);
+      return;
+    }
 
-  if (errorPagos) {
-    mensaje("mensajePago", errorPagos.message);
-    return;
-  }
-
-  const debe = (fiados || []).reduce((s,f) => s + Number(f.importe), 0);
-  const pagoPrevio = (pagos || []).reduce((s,p) => s + Number(p.importe), 0);
-  const saldo = debe - pagoPrevio;
-
-  if (importe > saldo + 0.001) {
-    mensaje("mensajePago", "El pago no puede ser mayor que la deuda pendiente: " + dinero(saldo));
-    return;
-  }
-
-  // Registrar el ingreso primero.
-  const errorOperacion = await insertarOperacion(
-    "venta",
-    importe,
-    "Cobro de fiado - " + clienteSeleccionado.nombre,
-    null,
-    ""
-  );
-
-  if (errorOperacion) {
-    mensaje("mensajePago", "No se pudo registrar el ingreso: " + errorOperacion.message);
-    return;
-  }
-
-  const { error } = await db.from("pagos_fiado").insert({
-    cliente_id: clienteSeleccionado.id,
-    importe,
-    fecha: fechaHoy(),
-    descripcion: descripcion || "Pago recibido"
-  });
-
-  if (error) {
-    mensaje("mensajePago",
-      "El ingreso quedó registrado, pero no se guardó el pago en Fiado. No lo vuelvas a cargar; avisá para corregirlo. Error: " + error.message
-    );
+    mensaje("mensajePago", "Pago registrado correctamente. Importe aplicado: " +
+      dinero(data?.importe_aplicado ?? importe));
+    await abrirCliente(clienteSeleccionado);
     await cargarResumen();
-    return;
+  } catch (error) {
+    mensaje("mensajePago", "Ocurrió un error al registrar el pago: " + error.message);
+  } finally {
+    if (boton) boton.disabled = false;
   }
-
-  mensaje("mensajePago", "Pago registrado correctamente.");
-  await abrirCliente(clienteSeleccionado);
-  await cargarResumen();
 }
 
 /* GRÁFICOS Y CALENDARIO */
