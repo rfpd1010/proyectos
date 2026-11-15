@@ -539,7 +539,10 @@ h1,h2,h3 { margin-top:0; }
 
 <section id="vistaPublicaCliente" class="panel oculto" style="max-width:900px;margin:25px auto;padding:16px;background:#000;color:#e5e5e5;border:1px solid #262626;border-radius:30px">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-    <h1 id="publicoNombreNegocio" style="margin:0">Mi cuenta</h1>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <h1 id="publicoNombreNegocio" style="margin:0">Mi cuenta</h1>
+      <div id="publicoAliasPago" style="display:none;color:#16a34a;font-size:15px"></div>
+    </div>
     <strong id="publicoEstadoCuenta" style="color:#16a34a;background:#052e16;padding:8px 14px;border-radius:20px">Al día</strong>
   </div>
   <p id="publicoNombreCliente" style="color:#aaa;margin:8px 0 20px"></p>
@@ -1113,8 +1116,16 @@ async function cargarVistaPublica(token) {
   $("vistaPublicaCliente").classList.remove("oculto");
   try {
     const r = await llamarFuncionCuentas("consultar", { token });
-    $("publicoNombreNegocio").textContent = "Mi cuenta";
-    $("publicoNombreCliente").textContent = "Cuenta de " + r.cliente + " · " + r.negocio;
+    $("publicoNombreNegocio").textContent = r.negocio || "Mi cuenta";
+    const aliasPago = $("publicoAliasPago");
+    if (r.alias_pago) {
+      aliasPago.textContent = "Alias para pagos: " + r.alias_pago;
+      aliasPago.style.display = "block";
+    } else {
+      aliasPago.textContent = "";
+      aliasPago.style.display = "none";
+    }
+    $("publicoNombreCliente").textContent = "Cuenta de " + r.cliente;
     $("publicoEstadoCuenta").textContent = Number(r.saldo) > 0 ? "Con deuda" : "Al día";
     if (Number(r.saldo) > 0) {
       $("publicoEstadoCuenta").style.color = "#fbbf24";
